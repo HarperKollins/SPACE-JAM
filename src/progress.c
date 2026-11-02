@@ -149,3 +149,4 @@ const char *Progress_GetMedalIcon(MedalId medal) {
         default: return "[MEDAL]";
     }
 }
+

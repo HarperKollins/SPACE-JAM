@@ -61,8 +61,8 @@ void Projectiles_Draw(const ProjectilePool *pool) {
         const Projectile *b = &pool->enemy[i];
         if (!b->active) continue;
 
-        DrawLineEx(b->prevPos, b->pos, 3.0f, (Color){255, 100, 0, 100});
-        DrawLineEx(b->prevPos, b->pos, 1.5f, (Color){255, 180, 80, 255});
+        DrawLineEx(b->prevPos, b->pos, 3.0f, b->trailColor);
+        DrawLineEx(b->prevPos, b->pos, 1.5f, ColorAlpha(b->color, 0.85f));
         DrawCircleV(b->pos, b->radius, b->color);
         DrawCircleV(b->pos, b->radius * 2.0f, ColorAlpha(b->color, 0.25f));
     }

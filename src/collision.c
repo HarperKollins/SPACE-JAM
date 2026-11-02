@@ -117,7 +117,7 @@ int Collision_Update(
                     ctx->screenShake = CLAMP(ctx->screenShake + 1.5f, 0.0f, SCREEN_SHAKE_MAX);
 
                     if (RandChance(0.08f)) {
-                        Powerup_SpawnRandom(powerups, a->pos);
+                        Powerup_SpawnRandom(powerups, aPos);
                     }
                 }
                 break;

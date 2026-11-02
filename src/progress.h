@@ -41,3 +41,4 @@ const char *Progress_GetMedalDesc(MedalId medal);
 const char *Progress_GetMedalIcon(MedalId medal);
 
 #endif /* SPACEJAM_PROGRESS_H */
+
