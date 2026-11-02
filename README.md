@@ -9,25 +9,32 @@ Author: **Harper Kollins** (<somtochukwucollins8@gmail.com>)
 
 ## Overview
 
-**SPACE JAM: Episode I — The Last Vector** is a retro-futuristic arcade space survival opera. You pilot the legendary **HK-01 Vanguard** test craft, flown by ace pilot **Harper Kollins**. The peaceful Free Colonies have been overwhelmed by the autocratic **Iron Synod**, a monolithic galactic empire deploying mass-produced war machines. As the last surviving strike vector, you must defend an unarmed civilian refugee convoy fleeing toward the Outer Rim by tearing through imperial blockades, asteroid graveyard belts, and capital dreadnoughts.
+**SPACE JAM: Episode I — The Last Vector** is an epic retro-futuristic arcade space survival opera. You pilot the legendary **HK-01 Vanguard** prototype strike craft, flown by ace aviator **Harper Kollins**. The peaceful Free Colonies of the Orion Reach have been shattered by the autocratic **Iron Synod**, a monolithic galactic empire deploying an endless armada of mass-produced war machines. As the last surviving strike vector, you are the sole escort protecting an unarmed civilian refugee convoy fleeing toward the Outer Rim.
+
+📖 **Read the full universe lore, characters, and sector chronicle:** [STORY.md](STORY.md)
 
 ---
 
 ## Features
 
-- 🎵 **Original Synth & Orchestral Soundtrack** — Seamlessly loopable Star Wars style space opera prologue fanfare (`music_intro.wav`) and high-energy 130 BPM arcade combat dogfight synthwave (`music.wav`).
-- 🔊 **Full 16-Bit SFX Suite** — Custom synthesized audio for player laser pews, enemy turbolaser pulses, crunchy detonations, shield hits, power-up chimes, dreadnought war alarms, and menu chimes.
-- 🛡️ **Tactical Enemy Combat & Repulsor Shields** — Enemies no longer suicide ram; they dogfight at tactical ranges, evade collisions, and fire their own signature weapons (Dagger darts, Jackal twin plasma, Bulwark heavy shells, Goliath torpedoes).
-- 📜 **Cinematic Story Prologue** — Star Wars style opening text crawl setting the stakes before combat, with interactive skip or re-watch anytime from the menu.
-- 🚀 **"HK-01 Vanguard" Interceptor** — Ceramic white and crimson red strike fighter with gloss-cyan cockpit canopy, wingtip cannons, and dynamic multi-layered plasma thruster jet.
-- 📻 **Tactical Comms Chatter** — In-mission radio transmissions from Fleet Command that provide real-time battlefield intelligence, alerts, and sector status.
-- 🌌 **Living Sector Environments** — Parallax deep space with drifting volumetric purple/magenta nebulae, distant cratered moons, twinkling cross-glint stars, and giant glowing planet horizons.
-- 👾 **Imperial Synod Fleet** —
-  - **Dagger Interceptor:** Fast, predatory chevron wings with crimson leading edges and horizontal red sensor visors.
-  - **Jackal Heavy Fighter:** Twin-fuselage split fighter with dual red plasma cannons.
-  - **Bulwark Ironclad:** Heavy composite-plated octagonal fortress with dual-barrel turbolaser turret.
-  - **Goliath Siege Platform:** Asymmetrical ordnance carrier with pulsing missile launch bays.
-- 👑 **Synod Dreadnought "Vindicator"** — Massive Star Destroyer style capital flagship bristling with turbolasers, deflector shields, and an exposed reactor core breach in Phase 2.
+- 📜 **Cinematic Universe & Story Cutscene** — Star Wars style opening story crawl followed by an interactive **Tactical Military Radio Comms Transmission** (Freq 104.8 MHz) with dual animated waveform monitors, authentic radio chirps, typewriter dialogue, and battle orders from Commander Vance.
+- 🌌 **Four Dynamic Celestial Sectors** —
+  - **Sector 1 (Waves 1–3):** *Shattered Terra Novus* — Defend launching civilian refugee shuttles above a burning cradle world with glowing lava fissures.
+  - **Sector 2 (Waves 4–6):** *The Solar Corona* — Dogfight inside the blazing solar furnace of *Prometheus* with looping solar flares and heat waves.
+  - **Sector 3 (Waves 7–9):** *Ice Rings of Xylos* — Navigate through dense concentric frozen ring fields orbiting a massive emerald gas giant.
+  - **Sector 4 (Waves 10–12+):** *The Synod Citadel* — Assault the moon-sized orbital fortress ring world in pure obsidian space.
+- 🚀 **Physical Ship Evolution (HK-01 Upgrades)** — Your starfighter visibly evolves as you clear sectors: *Mk I (Vanguard Interceptor)* $\rightarrow$ *Mk II (Armored Striker)* with titanium prow armor $\rightarrow$ *Mk III (Plasma Ace)* with cyan plasma conduits $\rightarrow$ *Mk IV (Ascendant Legend)* with royal gold trim and sub-atomic ion particle aura.
+- 👑 **Epic Sector Climax Bosses** —
+  - **Wave 3:** *Commander Varek // Synod Cruiser 'Reaver'*
+  - **Wave 6:** *Inquisitor Malakor // Solar Siege Platform 'Helios'*
+  - **Wave 9:** *High Admiral Zephyr // Stealth Carrier 'Void Stalker'*
+  - **Wave 12:** *The Iron Archon // Citadel Flagship 'Apocalypse'* (with multi-phase health bars and an exposed reactor core breach).
+- 🕊️ **Civilian Refugee Escorts** — Unarmed colony evacuation shuttles launch in Sector 1. Escort them safely across the sector to earn +500 bonus points and military honors.
+- 🎖️ **Military Service Record & Medals System** — Persistent progress saved to disk (`spacejam_save.dat`) tracking lifetime kills, shuttles saved, bosses crushed, military ranks (`Cadet` to `Vanguard Legend`), and 8 campaign valor medals.
+- ⚡ **Hyper-Nitro Engine Flex** — High-speed propulsion mechanics with live engine glow, 2.5D bank tilting, cockpit throttle rumble, and continuous overdrive boost.
+- 🎵 **Original Synth & Orchestral Soundtrack** — Seamlessly loopable space opera prologue fanfare (`music_intro.wav`) and high-energy 130 BPM arcade combat dogfight synthwave (`music.wav`).
+- 🔊 **Full 16-Bit SFX Suite** — Custom synthesized audio for player laser pews, enemy turbolaser pulses, crunchy detonations, shield hits, power-up chimes, dreadnought alarms, radio static/chirps/beeps, warp jumps, and medal award fanfares.
+- 🛡️ **Tactical Enemy Combat & Signature Lasers** — Scouts fire swift cyan needles, Interceptors fire twin crimson plasma, Tanks fire heavy amber flak, and Bombers launch tracking violet torpedoes. Enemies dogfight at tactical standoff ranges rather than blindly ramming.
 - 🔫 **Dynamic Weapon Arsenal** — Single Laser, Twin Double Shot, Rapid Plasma Cannon, and 3-Way Spread Shot.
 - ☄️ **Procedural Asteroids** — Physics-based destructible asteroids that dynamically fragment from Large into Medium into Small chunks.
 - 💥 **Vibrant Particle System** — Thruster exhaust plumes, weapon impact sparks, energetic debris, screen shake, and radiant explosions.
