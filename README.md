@@ -9,23 +9,30 @@ Author: **Harper Kollins** (<somtochukwucollins8@gmail.com>)
 
 ## Overview
 
-**SPACE JAM** is a retro-futuristic arcade space survival game. You pilot an agile spacecraft through dangerous cosmic territory populated by hostile fleets, drifting asteroid fields, and colossal boss encounters. Survive wave after wave, upgrade your arsenal with powerful drops, evade enemy fire, and compete for the top high score.
+**SPACE JAM: Episode I — The Last Vector** is a retro-futuristic arcade space survival opera. You pilot the legendary **HK-01 Vanguard** test craft, flown by ace pilot **Harper Kollins**. The peaceful Free Colonies have been overwhelmed by the autocratic **Iron Synod**, a monolithic galactic empire deploying mass-produced war machines. As the last surviving strike vector, you must defend an unarmed civilian refugee convoy fleeing toward the Outer Rim by tearing through imperial blockades, asteroid graveyard belts, and capital dreadnoughts.
 
 ---
 
 ## Features
 
-- 🚀 **Physics-Driven Spaceship** — Inertia, acceleration, rotation, velocity damping, and screen wrapping.
+- 📜 **Cinematic Story Prologue** — Star Wars style opening text crawl setting the stakes before combat, with interactive skip or re-watch anytime from the menu.
+- 🚀 **"HK-01 Vanguard" Interceptor** — Ceramic white and crimson red strike fighter with gloss-cyan cockpit canopy, wingtip cannons, and dynamic multi-layered plasma thruster jet.
+- 📻 **Tactical Comms Chatter** — In-mission radio transmissions from Fleet Command that provide real-time battlefield intelligence, alerts, and sector status.
+- 🌌 **Living Sector Environments** — Parallax deep space with drifting volumetric purple/magenta nebulae, distant cratered moons, twinkling cross-glint stars, and giant glowing planet horizons.
+- 👾 **Imperial Synod Fleet** —
+  - **Dagger Interceptor:** Fast, predatory chevron wings with crimson leading edges and horizontal red sensor visors.
+  - **Jackal Heavy Fighter:** Twin-fuselage split fighter with dual red plasma cannons.
+  - **Bulwark Ironclad:** Heavy composite-plated octagonal fortress with dual-barrel turbolaser turret.
+  - **Goliath Siege Platform:** Asymmetrical ordnance carrier with pulsing missile launch bays.
+- 👑 **Synod Dreadnought "Vindicator"** — Massive Star Destroyer style capital flagship bristling with turbolasers, deflector shields, and an exposed reactor core breach in Phase 2.
 - 🔫 **Dynamic Weapon Arsenal** — Single Laser, Twin Double Shot, Rapid Plasma Cannon, and 3-Way Spread Shot.
-- 👾 **Diverse Enemy Classes** — Scouts (fast chargers), Interceptors (strafing duelists), Tanks (armored juggernauts), and Bombers (long-range artillery).
-- 👑 **Epic Boss Encounters** — Appears every 5 waves featuring dual attack phases, spread barrage attacks, and dynamic health bars.
 - ☄️ **Procedural Asteroids** — Physics-based destructible asteroids that dynamically fragment from Large into Medium into Small chunks.
 - 💥 **Vibrant Particle System** — Thruster exhaust plumes, weapon impact sparks, energetic debris, screen shake, and radiant explosions.
 - ⚡ **Rewarding Power-Ups** — Health Repairs, Kinetic Shields, Rapid Fire, Double Shot, 3-Way Spread, and Temporary Invulnerability.
 - 🎮 **Full HUD & Mission Help** — Real-time health gauges, life indicators, power-up timers, boss meters, and an in-game controls HUD overlay (`F1`).
 - 🏆 **High Score System** — Local persistent leaderboard saved to disk with checksum data validation.
 - ⚙️ **Customizable Settings** — Audio volume controls, fullscreen toggle, screen shake intensity, and particle quality options.
-- 🪟 **Comprehensive Menus** — Interactive Main Menu, Controls Screen, In-Game Pause Menu (with resume, restart, settings, and direct desktop quit), and Game Over summary. Full keyboard and mouse support.
+- 🪟 **Comprehensive Menus** — Main Menu, Story Prologue, Controls Screen, In-Game Pause Menu (with resume, restart, settings, and direct desktop quit), and Game Over summary. Full keyboard and mouse support.
 
 ---
 

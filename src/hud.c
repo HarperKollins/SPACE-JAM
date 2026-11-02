@@ -30,10 +30,12 @@ void HUD_DrawBossBar(const Enemy *boss, int screenW, int screenH) {
     DrawRectangle(bx - 6, by - 24, bw + 12, bh + 30, (Color){10, 0, 20, 180});
 
     /* Label */
-    const char *bossLabel = (boss->bossPhase == 2) ? "!! BOSS - PHASE 2 !!" : "BOSS";
-    int labelWidth = MeasureText(bossLabel, 14);
-    DrawText(bossLabel, bx + bw / 2 - labelWidth / 2, by - 18, 14,
-             boss->bossPhase == 2 ? (Color){255, 80, 80, 255} : (Color){200, 80, 255, 255});
+    const char *bossLabel = (boss->bossPhase == 2) ?
+        "SYNOD DREADNOUGHT 'VINDICATOR' // [CRITICAL REACTOR BREACH]" :
+        "SYNOD DREADNOUGHT 'VINDICATOR' // [CAPITAL FLAGSHIP]";
+    int labelWidth = MeasureText(bossLabel, 13);
+    DrawText(bossLabel, bx + bw / 2 - labelWidth / 2, by - 18, 13,
+             boss->bossPhase == 2 ? (Color){255, 60, 60, 255} : (Color){220, 80, 255, 255});
 
     /* Bar */
     Color barColor = (frac > 0.5f) ? (Color){180, 0, 255, 255} :

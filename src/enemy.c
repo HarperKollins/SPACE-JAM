@@ -276,119 +276,218 @@ void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
 
 /* ─── Drawing ────────────────────────────────────────── */
 
+/* Synod Faction Color Palette: Industrial Gunmetal, Cold Slate, Blood Crimson */
+static const Color kSynodHullDark  = {  36,  42,  52, 255 }; /* Heavy battleship steel */
+static const Color kSynodHullMid   = {  56,  64,  78, 255 }; /* Armor plates */
+static const Color kSynodHullLight = {  88,  98, 116, 255 }; /* Panel highlights */
+static const Color kSynodRed       = { 220,  30,  40, 255 }; /* Imperial red accents */
+static const Color kSynodRedGlow   = { 255,  50,  60, 255 }; /* Glowing sensor visors */
+static const Color kSynodRedDark   = { 120,  15,  22, 255 }; /* Crimson borders */
+
 static void DrawScout(const Enemy *e) {
+    /* Synod "Dagger" Interceptor — Fast, predatory chevron dagger */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
-    Color hull = (Color){ 200, 60, 60, 255 };
-    Color edge = (Color){ 255, 120, 80, 255 };
-    Vector2 tip = RP(0, 12);  /* scouts face downward toward player */
-    Vector2 lw  = RP(-10, -8);
-    Vector2 rw  = RP( 10, -8);
-    DrawTriangle(lw, tip, rw, hull);
-    DrawTriangleLines(lw, tip, rw, edge);
-    DrawCircleV(RP(0, 2), 3.0f, (Color){255, 80, 80, 200});
+    /* Dual rear ion thrusters (red glow) */
+    Vector2 tL = RP(-5, -9), tR = RP(5, -9);
+    DrawCircleV(tL, 2.5f, kSynodRedGlow);
+    DrawCircleV(tR, 2.5f, kSynodRedGlow);
+    DrawCircleV(tL, 1.2f, WHITE);
+    DrawCircleV(tR, 1.2f, WHITE);
+
+    /* Main Dagger Hull (Pointed forward towards tip at (0, 14)) */
+    Vector2 tip = RP(0, 14);
+    Vector2 wingL = RP(-12, -7), wingR = RP(12, -7);
+    Vector2 notch = RP(0, -3);
+
+    /* Left and right swept wings */
+    DrawTriangle(wingL, tip, notch, kSynodHullMid);
+    DrawTriangle(notch, tip, wingR, kSynodHullMid);
+    DrawTriangleLines(wingL, tip, notch, kSynodHullDark);
+    DrawTriangleLines(notch, tip, wingR, kSynodHullDark);
+
+    /* Crimson Leading Edge Plates */
+    DrawLineEx(wingL, tip, 2.2f, kSynodRed);
+    DrawLineEx(wingR, tip, 2.2f, kSynodRed);
+
+    /* Central Red Optical Sensor Visor (Glowing slit) */
+    Vector2 eye1 = RP(-3.5f, 5), eye2 = RP(3.5f, 5);
+    DrawLineEx(eye1, eye2, 2.0f, kSynodRedGlow);
+    DrawPixelV(RP(0, 5), WHITE);
+
     #undef RP
 }
 
 static void DrawInterceptor(const Enemy *e) {
+    /* Synod "Jackal" Heavy Fighter — Twin-boom split fighter with dual cannons */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
-    Color hull = (Color){ 180, 50, 180, 255 };
-    Color edge = (Color){ 255, 100, 255, 255 };
-    Vector2 pts[4] = { RP(0, 16), RP(-14, -6), RP(0, 0), RP(14, -6) };
-    DrawTriangle(pts[1], pts[0], pts[2], hull);
-    DrawTriangle(pts[2], pts[0], pts[3], hull);
-    DrawTriangleLines(pts[1], pts[0], pts[2], edge);
-    DrawTriangleLines(pts[2], pts[0], pts[3], edge);
-    DrawCircleV(RP(0, 6), 4.5f, (Color){255, 80, 255, 200});
+    /* Left and right weapon sponson booms */
+    Vector2 boomL1 = RP(-12, -8), boomL2 = RP(-12, 12);
+    Vector2 boomR1 = RP( 12, -8), boomR2 = RP( 12, 12);
+    DrawLineEx(boomL1, boomL2, 4.0f, kSynodHullDark);
+    DrawLineEx(boomR1, boomR2, 4.0f, kSynodHullDark);
+    /* Crimson blaster tips */
+    DrawCircleV(boomL2, 2.5f, kSynodRed);
+    DrawCircleV(boomR2, 2.5f, kSynodRed);
+
+    /* Central Armored Fuselage */
+    Vector2 body[4] = { RP(0, 14), RP(-8, -4), RP(0, -10), RP(8, -4) };
+    DrawTriangle(body[1], body[0], body[3], kSynodHullMid);
+    DrawTriangle(body[1], body[3], body[2], kSynodHullDark);
+    DrawTriangleLines(body[1], body[0], body[3], kSynodRedDark);
+
+    /* Connecting wing spars */
+    DrawLineEx(RP(-12, 0), RP(12, 0), 3.0f, kSynodHullLight);
+
+    /* Hexagonal red cockpit sensor */
+    DrawCircleV(RP(0, 3), 3.8f, kSynodRedGlow);
+    DrawCircleV(RP(0, 3), 1.8f, WHITE);
+
     #undef RP
 }
 
 static void DrawTank(const Enemy *e) {
+    /* Synod "Bulwark" Ironclad — Heavy armored hexagonal fortress */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
-    Color hull  = (Color){ 60, 160, 60, 255 };
-    Color edge  = (Color){ 100, 230, 100, 255 };
-    /* Hexagon-ish tank shape */
+    /* Multi-plated heavy hexagonal hull */
     Vector2 hex[6] = {
-        RP(0, 22), RP(-18, 10), RP(-18, -10),
-        RP(0, -22), RP(18, -10), RP(18, 10)
+        RP(  0,  24), RP(-20,  12), RP(-20, -12),
+        RP(  0, -24), RP( 20, -12), RP( 20,  12)
     };
     for (int t = 1; t < 5; t++) {
-        DrawTriangle(hex[0], hex[t], hex[t+1], hull);
-        DrawLineV(hex[t], hex[t+1], edge);
+        DrawTriangle(hex[0], hex[t], hex[t+1], kSynodHullMid);
+        DrawLineEx(hex[t], hex[t+1], 2.0f, kSynodHullLight);
     }
-    DrawLineV(hex[0], hex[1], edge);
-    DrawLineV(hex[0], hex[5], edge);
-    DrawCircleV(e->pos, 8.0f, (Color){80, 200, 80, 200});
+    DrawLineEx(hex[0], hex[1], 2.5f, kSynodRed);
+    DrawLineEx(hex[0], hex[5], 2.5f, kSynodRed);
+
+    /* Heavy Reinforced Prow Armor Plate */
+    Vector2 prow[3] = { RP(0, 24), RP(-12, 10), RP(12, 10) };
+    DrawTriangle(prow[0], prow[1], prow[2], kSynodHullDark);
+    DrawTriangleLines(prow[0], prow[1], prow[2], kSynodRed);
+
+    /* Heavy Dual-Turret Turbolaser on Top */
+    Vector2 turretPos = RP(0, 0);
+    DrawCircleV(turretPos, 9.0f, kSynodHullDark);
+    DrawCircleLinesV(turretPos, 9.0f, kSynodHullLight);
+    /* Twin heavy cannon barrels pointing forward */
+    DrawLineEx(RP(-4, 0), RP(-4, 16), 2.5f, kSynodHullLight);
+    DrawLineEx(RP( 4, 0), RP( 4, 16), 2.5f, kSynodHullLight);
+    DrawCircleV(turretPos, 4.0f, kSynodRed);
+
     #undef RP
 }
 
 static void DrawBomber(const Enemy *e) {
+    /* Synod "Goliath" Siege Platform — Heavy ordnance carrier with pulsing racks */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
-    Color hull = (Color){ 200, 120, 20, 255 };
-    Color edge = (Color){ 255, 180, 60, 255 };
-    Vector2 body[3] = { RP(0, 16), RP(-16, -12), RP(16, -12) };
-    Vector2 wingL[3] = { RP(-16, -12), RP(-28, 4), RP(-8, 4) };
-    Vector2 wingR[3] = { RP(16, -12), RP(8, 4), RP(28, 4) };
-    DrawTriangle(body[0], body[1], body[2], hull);
-    DrawTriangle(wingL[0], wingL[1], wingL[2], (Color){160, 90, 10, 220});
-    DrawTriangle(wingR[1], wingR[0], wingR[2], (Color){160, 90, 10, 220});
-    DrawTriangleLines(body[0], body[1], body[2], edge);
-    DrawTriangleLines(wingL[0], wingL[1], wingL[2], edge);
-    DrawTriangleLines(wingR[1], wingR[0], wingR[2], edge);
-    DrawCircleV(RP(0, 4), 5.0f, (Color){255, 160, 30, 200});
+    /* Heavy delta fuselage */
+    Vector2 body[3] = { RP(0, 18), RP(-16, -14), RP(16, -14) };
+    DrawTriangle(body[0], body[1], body[2], kSynodHullMid);
+    DrawTriangleLines(body[0], body[1], body[2], kSynodHullDark);
+
+    /* Massive Port and Starboard Missile Launch Pods */
+    Vector2 podL[3] = { RP(-16, -14), RP(-30, 2), RP(-10, 2) };
+    Vector2 podR[3] = { RP( 16, -14), RP( 10, 2), RP( 30, 2) };
+    DrawTriangle(podL[0], podL[1], podL[2], kSynodHullDark);
+    DrawTriangle(podR[0], podR[1], podR[2], kSynodHullDark);
+    DrawTriangleLines(podL[0], podL[1], podL[2], kSynodRedDark);
+    DrawTriangleLines(podR[0], podR[1], podR[2], kSynodRedDark);
+
+    /* Pulsing Ordnance Silo Bays */
+    float pulse = 0.5f + 0.5f * sinf(GetTime() * 8.0f);
+    Color bayCol = (Color){ 255, (unsigned char)(100 + pulse * 100), 20, 255 };
+    DrawCircleV(RP(-18, -4), 4.5f, bayCol);
+    DrawCircleV(RP( 18, -4), 4.5f, bayCol);
+    DrawCircleV(RP(-18, -4), 2.0f, WHITE);
+    DrawCircleV(RP( 18, -4), 2.0f, WHITE);
+
+    /* Bridge Command Visor */
+    DrawLineEx(RP(-4, 8), RP(4, 8), 2.5f, kSynodRedGlow);
+
     #undef RP
 }
 
 static void DrawBoss(const Enemy *e) {
-    float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 3.0f);
+    /* Synod Dreadnought "Vindicator" — Monolithic Star Destroyer Capital Ship */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
     int phase = e->bossPhase;
-    Color coreColor = (phase == 2) ? (Color){200, 30, 30, 255} : (Color){180, 20, 180, 255};
-    Color edgeColor = (phase == 2) ? (Color){255, 80, 50, 255} : (Color){255, 80, 255, 255};
-    Color glowColor = (phase == 2) ?
-        (Color){255, 60, 0, (unsigned char)(80 + pulse * 100)} :
-        (Color){200, 0, 255, (unsigned char)(60 + pulse * 100)};
+    float pulse = 0.5f + 0.5f * sinf((float)GetTime() * (phase == 2 ? 8.0f : 4.0f));
+    float r = e->radius;
 
-    /* Outer glow */
-    DrawCircleV(e->pos, e->radius + 12.0f * pulse, glowColor);
+    /* 1. Deflector Shield Aura */
+    Color shieldColor = (phase == 2) ?
+        (Color){ 255,  40,  20, (unsigned char)(60 + pulse * 90) } :
+        (Color){ 180,  20, 220, (unsigned char)(40 + pulse * 60) };
+    DrawCircleV(e->pos, r + 14.0f * pulse, shieldColor);
 
-    /* Main hull — large diamond/star shape */
-    float r  = e->radius;
-    float r2 = r * 0.5f;
-    Vector2 pts[8];
-    for (int i = 0; i < 8; i++) {
-        float a = DEG2RAD(i * 45.0f);
-        float rr = (i % 2 == 0) ? r : r2;
-        pts[i] = (Vector2){ e->pos.x + cosf(a) * rr, e->pos.y + sinf(a) * rr };
+    /* 2. Massive Wedge-Shaped Dreadnought Hull (Arrowhead Prow forward at (0, r)) */
+    Vector2 prowTip = RP(0, r);
+    Vector2 flankL  = RP(-r * 0.95f, -r * 0.85f);
+    Vector2 flankR  = RP( r * 0.95f, -r * 0.85f);
+    Vector2 stern   = RP(0, -r * 0.65f);
+
+    /* Port and Starboard Armor Wedges */
+    DrawTriangle(prowTip, flankL, stern, kSynodHullMid);
+    DrawTriangle(prowTip, stern, flankR, kSynodHullDark);
+    DrawLineEx(prowTip, flankL, 3.0f, kSynodHullLight);
+    DrawLineEx(prowTip, flankR, 3.0f, kSynodHullLight);
+    DrawLineEx(flankL, stern, 2.0f, kSynodRedDark);
+    DrawLineEx(flankR, stern, 2.0f, kSynodRedDark);
+
+    /* Center Spine Ridge */
+    DrawLineEx(prowTip, stern, 2.5f, kSynodHullLight);
+
+    /* 3. Multi-Tiered Command Bridge Superstructure */
+    Vector2 bridgeL = RP(-r * 0.35f, -r * 0.40f);
+    Vector2 bridgeR = RP( r * 0.35f, -r * 0.40f);
+    Vector2 bridgeF = RP(0, -r * 0.05f);
+    DrawTriangle(bridgeF, bridgeL, bridgeR, kSynodHullDark);
+    DrawTriangleLines(bridgeF, bridgeL, bridgeR, kSynodRed);
+
+    /* Glowing Command Bridge Viewport (Horizontal crimson strip) */
+    DrawLineEx(RP(-r * 0.22f, -r * 0.25f), RP(r * 0.22f, -r * 0.25f), 3.0f, kSynodRedGlow);
+
+    /* 4. Heavy Flank Turbolaser Batteries (4 battery turrets along trenches) */
+    for (int k = 1; k <= 3; k++) {
+        float fFrac = (float)k * 0.22f;
+        Vector2 batL = RP(-r * (0.80f - fFrac * 0.6f), -r * 0.70f + fFrac * r * 1.2f);
+        Vector2 batR = RP( r * (0.80f - fFrac * 0.6f), -r * 0.70f + fFrac * r * 1.2f);
+        DrawCircleV(batL, 4.0f, kSynodHullDark);
+        DrawCircleV(batR, 4.0f, kSynodHullDark);
+        DrawCircleV(batL, 2.0f, kSynodRed);
+        DrawCircleV(batR, 2.0f, kSynodRed);
     }
-    for (int i = 0; i < 8; i++) {
-        DrawTriangle(e->pos, pts[i], pts[(i+1)%8], coreColor);
-        DrawLineV(pts[i], pts[(i+1)%8], edgeColor);
+
+    /* 5. Exposed Hyper-Plasma Reactor Core (Phase 2 Critical Breach!) */
+    if (phase == 2) {
+        Color coreGlow = (Color){ 255, 60, 20, (unsigned char)(160 + pulse * 95) };
+        DrawCircleV(e->pos, r * 0.30f, coreGlow);
+        DrawCircleV(e->pos, r * 0.16f, WHITE);
+        DrawCircleLinesV(e->pos, r * 0.30f, (Color){ 255, 200, 50, 255 });
     }
 
-    /* Inner detail */
-    DrawCircleV(e->pos, r * 0.35f, edgeColor);
-    DrawCircleV(e->pos, r * 0.2f,  WHITE);
-
-    /* Wing cannons */
-    Vector2 canL = RP(-r * 0.8f, 0);
-    Vector2 canR = RP( r * 0.8f, 0);
-    DrawCircleV(canL, 7.0f, (phase == 2) ? (Color){255,80,0,220} : (Color){200,0,255,220});
-    DrawCircleV(canR, 7.0f, (phase == 2) ? (Color){255,80,0,220} : (Color){200,0,255,220});
+    /* 6. Triple Heavy Ion Engines at Stern */
+    for (int eIdx = -1; eIdx <= 1; eIdx++) {
+        Vector2 engPos = RP((float)eIdx * r * 0.35f, -r * 0.85f);
+        DrawCircleV(engPos, 5.5f, kSynodHullDark);
+        DrawCircleV(engPos, 3.5f, kSynodRedGlow);
+        DrawCircleV(engPos, 1.5f, WHITE);
+    }
 
     #undef RP
 }

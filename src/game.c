@@ -203,6 +203,11 @@ void Game_Update(GameContext *ctx, float dt) {
             Menu_UpdateMain(&g_menu, ctx, dt);
             break;
 
+        /* ─ Story Prologue Crawl ─ */
+        case STATE_PROLOGUE:
+            Menu_UpdatePrologue(&g_menu, ctx, dt);
+            break;
+
         /* ─ Playing ─ */
         case STATE_PLAYING: {
             /* Pause (ESC or click HUD button) */
@@ -415,23 +420,61 @@ void Game_Draw(GameContext *ctx) {
             Menu_DrawPause(&g_menu, sw, sh);
         }
 
-        /* Wave announcement banner */
+        /* Sector & Wave announcement banner + Tactical Comms chatter */
         static float waveAnnounceTimer = 0.0f;
         static int   lastAnnouncedWave = 0;
         if (lastAnnouncedWave != ctx->wave) {
             lastAnnouncedWave = ctx->wave;
-            waveAnnounceTimer = 2.5f;
+            waveAnnounceTimer = 3.6f;
         }
         if (waveAnnounceTimer > 0.0f) {
             waveAnnounceTimer -= GetFrameTime();
-            float alpha = CLAMP(waveAnnounceTimer * 1.5f, 0.0f, 1.0f);
-            char wbuf[32];
+            float alpha = CLAMP(waveAnnounceTimer * 1.2f, 0.0f, 1.0f);
+            unsigned char a = (unsigned char)(alpha * 255);
+
             int bossWave = (ctx->wave % BOSS_WAVE_INTERVAL == 0);
-            snprintf(wbuf, sizeof(wbuf), bossWave ? "!! BOSS WAVE %d !!" : "WAVE %d", ctx->wave);
-            int tw = MeasureText(wbuf, 42);
-            Color wc = bossWave ? (Color){255, 80, 255, (unsigned char)(alpha * 255)}
-                                : (Color){0, 220, 255, (unsigned char)(alpha * 255)};
-            DrawText(wbuf, sw / 2 - tw / 2, sh / 2 - 60, 42, wc);
+            const char *sectorName = (ctx->wave <= 4) ? "SECTOR 1 // THE SHROUDED FRONTIER" :
+                                     (ctx->wave == 5) ? "FLEET ALERT // DREADNOUGHT INTERCEPTION" :
+                                     (ctx->wave <= 9) ? "SECTOR 2 // THE ORBITAL GRAVEYARD" :
+                                                        "SECTOR 3 // SYNOD CITADEL REACH";
+
+            /* Tactical Comms Message */
+            const char *commsMsg =
+                (ctx->wave == 1) ? "[FLEET HQ]: Pilot Kollins, Synod Dagger interceptors detected. Clear the airspace, Ace!" :
+                (ctx->wave == 2) ? "[FLEET HQ]: Good kills. High-speed strike echelon detected on radar." :
+                (ctx->wave == 3) ? "[FLEET HQ]: Watch your flanks! Synod Jackal heavy fighters closing in." :
+                (ctx->wave == 4) ? "[FLEET HQ]: Ordnance alert! Avoid Goliath plasma torpedo barrages." :
+                (ctx->wave == 5) ? "[EMERGENCY]: Synod Dreadnought 'Vindicator' dropping out of warp! Target the bridge!" :
+                (ctx->wave == 6) ? "[FLEET HQ]: Blockade shattered! You've entered the graveyard of the 4th Fleet." :
+                (ctx->wave == 7) ? "[FLEET HQ]: Heavy Bulwark ironclads deploying composite shields. Keep moving!" :
+                (ctx->wave == 8) ? "[FLEET HQ]: Refugee convoy nearing hyperspace buoy! Hold the line, Ace!" :
+                (ctx->wave == 9) ? "[FLEET HQ]: Heavy siege wave incoming. Collect weapon power-ups and fire at will!" :
+                                   "[FLEET HQ]: Imperial fortress flagship detected. Bring her down for the Free Colonies!";
+
+            /* 1. Sector & Wave Center Banner */
+            int stw = MeasureText(sectorName, 18);
+            Color secCol = bossWave ? (Color){ 255, 60, 60, a } : (Color){ 0, 220, 255, a };
+            DrawText(sectorName, sw / 2 - stw / 2, sh / 2 - 76, 18, secCol);
+
+            char wbuf[32];
+            snprintf(wbuf, sizeof(wbuf), bossWave ? "!! BOSS ENCOUNTER !!" : "WAVE %d", ctx->wave);
+            int tw = MeasureText(wbuf, 44);
+            Color wc = bossWave ? (Color){ 255, 80, 80, a } : (Color){ 255, 215, 0, a };
+            DrawText(wbuf, sw / 2 - tw / 2, sh / 2 - 46, 44, wc);
+
+            /* 2. Tactical Comms Box at Bottom */
+            int cboxW = MIN(740, sw - 80);
+            int cboxH = 50;
+            int cboxX = sw / 2 - cboxW / 2;
+            int cboxY = sh - 100;
+            DrawRectangleRounded((Rectangle){ (float)cboxX, (float)cboxY, (float)cboxW, (float)cboxH },
+                                 0.15f, 6, (Color){ 4, 8, 20, (unsigned char)(alpha * 210) });
+            DrawRectangleRoundedLines((Rectangle){ (float)cboxX, (float)cboxY, (float)cboxW, (float)cboxH },
+                                      0.15f, 6, (Color){ 0, 180, 255, (unsigned char)(alpha * 160) });
+            DrawText("TACTICAL COMMS // FREQ 104.8 MHZ", cboxX + 16, cboxY + 8, 11,
+                     (Color){ 0, 255, 180, a });
+            DrawText(commsMsg, cboxX + 16, cboxY + 24, 14,
+                     (Color){ 230, 240, 255, a });
         }
 
         /* In-game controls hint overlay (fades out after 8s, F1 to toggle) */
@@ -462,6 +505,8 @@ void Game_Draw(GameContext *ctx) {
     switch (ctx->state) {
         case STATE_MAIN_MENU:
             Menu_DrawMain(&g_menu, ctx, sw, sh); break;
+        case STATE_PROLOGUE:
+            Menu_DrawPrologue(&g_menu, sw, sh); break;
         case STATE_GAME_OVER:
             Menu_DrawGameOver(&g_menu, ctx, sw, sh); break;
         case STATE_SETTINGS:

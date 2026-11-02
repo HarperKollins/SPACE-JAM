@@ -10,6 +10,7 @@
 /* ── Game States ─────────────────────────────────────── */
 typedef enum {
     STATE_MAIN_MENU = 0,
+    STATE_PROLOGUE,
     STATE_PLAYING,
     STATE_PAUSED,
     STATE_GAME_OVER,
