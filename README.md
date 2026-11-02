@@ -15,6 +15,9 @@ Author: **Harper Kollins** (<somtochukwucollins8@gmail.com>)
 
 ## Features
 
+- 🎵 **Original Synth & Orchestral Soundtrack** — Seamlessly loopable Star Wars style space opera prologue fanfare (`music_intro.wav`) and high-energy 130 BPM arcade combat dogfight synthwave (`music.wav`).
+- 🔊 **Full 16-Bit SFX Suite** — Custom synthesized audio for player laser pews, enemy turbolaser pulses, crunchy detonations, shield hits, power-up chimes, dreadnought war alarms, and menu chimes.
+- 🛡️ **Tactical Enemy Combat & Repulsor Shields** — Enemies no longer suicide ram; they dogfight at tactical ranges, evade collisions, and fire their own signature weapons (Dagger darts, Jackal twin plasma, Bulwark heavy shells, Goliath torpedoes).
 - 📜 **Cinematic Story Prologue** — Star Wars style opening text crawl setting the stakes before combat, with interactive skip or re-watch anytime from the menu.
 - 🚀 **"HK-01 Vanguard" Interceptor** — Ceramic white and crimson red strike fighter with gloss-cyan cockpit canopy, wingtip cannons, and dynamic multi-layered plasma thruster jet.
 - 📻 **Tactical Comms Chatter** — In-mission radio transmissions from Fleet Command that provide real-time battlefield intelligence, alerts, and sector status.

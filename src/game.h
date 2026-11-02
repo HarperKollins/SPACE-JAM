@@ -63,6 +63,7 @@ void Game_ChangeState(GameContext *ctx, GameState next);
 void Game_AddScore(GameContext *ctx, int points);
 void Game_NextWave(GameContext *ctx);
 void Game_StartNewGame(GameContext *ctx);
+void Game_PlaySFX(int sfxId);
 
 #endif /* SPACEJAM_GAME_H */
 

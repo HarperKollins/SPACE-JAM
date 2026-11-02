@@ -111,6 +111,7 @@ $(EXE): $(OBJECTS)
 ifeq ($(PLATFORM),windows)
 	@cp -u /ucrt64/bin/libraylib.dll /ucrt64/bin/glfw3.dll $(BUILD_DIR)/ 2>/dev/null || true
 endif
+	@cp -ru assets $(BUILD_DIR)/ 2>/dev/null || true
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	@echo "[cc]   $<"

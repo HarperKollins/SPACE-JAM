@@ -89,14 +89,19 @@ int Projectile_SpawnPlayer(ProjectilePool *pool, Vector2 pos, Vector2 dir, int d
 
 int Projectile_SpawnEnemy(ProjectilePool *pool, Vector2 pos, Vector2 dir,
                           int damage, Color color) {
+    return Projectile_SpawnEnemyEx(pool, pos, dir, ENEMY_BULLET_SPEED, ENEMY_BULLET_RADIUS, damage, color);
+}
+
+int Projectile_SpawnEnemyEx(ProjectilePool *pool, Vector2 pos, Vector2 dir,
+                            float speed, float radius, int damage, Color color) {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Projectile *b = &pool->enemy[i];
         if (b->active) continue;
         b->pos     = pos;
         b->prevPos = pos;
-        b->vel     = Vec2Scale(dir, ENEMY_BULLET_SPEED);
+        b->vel     = Vec2Scale(dir, speed);
         b->life    = ENEMY_BULLET_LIFE;
-        b->radius  = ENEMY_BULLET_RADIUS;
+        b->radius  = radius;
         b->damage  = damage;
         b->owner   = PROJ_ENEMY;
         b->color   = color;

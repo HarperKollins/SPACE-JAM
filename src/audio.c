@@ -10,12 +10,14 @@
 /* Internal sound handle storage */
 static Sound  g_sfx[SFX_COUNT];
 static int    g_sfxLoaded[SFX_COUNT];
-static Music  g_music;
-static int    g_musicLoaded = 0;
+
+static Music  g_music[MUSIC_TRACK_COUNT];
+static int    g_musicLoaded[MUSIC_TRACK_COUNT];
 
 /* Asset paths relative to executable */
 static const char *kSfxPaths[SFX_COUNT] = {
     "assets/audio/shoot.wav",
+    "assets/audio/enemy_shoot.wav",
     "assets/audio/explosion_small.wav",
     "assets/audio/explosion_large.wav",
     "assets/audio/player_hit.wav",
@@ -27,11 +29,25 @@ static const char *kSfxPaths[SFX_COUNT] = {
     "assets/audio/game_over.wav",
 };
 
+static const char *kMusicPaths[MUSIC_TRACK_COUNT] = {
+    "",
+    "assets/audio/music_intro.wav",
+    "assets/audio/music.wav",
+};
+
+static const char *ResolveAssetPath(const char *path, char *buf, size_t bufSize) {
+    if (FileExists(path)) return path;
+    snprintf(buf, bufSize, "../%s", path);
+    if (FileExists(buf)) return buf;
+    return path;
+}
+
 void Audio_Init(AudioManager *am, float masterVol, float musicVol, float sfxVol) {
     memset(am, 0, sizeof(*am));
     am->masterVol = masterVol;
     am->musicVol  = musicVol;
     am->sfxVol    = sfxVol;
+    am->currentTrack = MUSIC_TRACK_NONE;
 
     InitAudioDevice();
     if (!IsAudioDeviceReady()) {
@@ -41,11 +57,14 @@ void Audio_Init(AudioManager *am, float masterVol, float musicVol, float sfxVol)
     }
     am->initialized = 1;
 
-    /* Load sound effects — missing files are silently skipped */
+    char resolved[256];
+
+    /* Load sound effects */
     for (int i = 0; i < SFX_COUNT; i++) {
         g_sfxLoaded[i] = 0;
-        if (FileExists(kSfxPaths[i])) {
-            g_sfx[i] = LoadSound(kSfxPaths[i]);
+        const char *p = ResolveAssetPath(kSfxPaths[i], resolved, sizeof(resolved));
+        if (FileExists(p)) {
+            g_sfx[i] = LoadSound(p);
             if (IsSoundValid(g_sfx[i])) {
                 SetSoundVolume(g_sfx[i], masterVol * sfxVol);
                 g_sfxLoaded[i] = 1;
@@ -53,26 +72,32 @@ void Audio_Init(AudioManager *am, float masterVol, float musicVol, float sfxVol)
         }
     }
 
-    /* Background music */
-    const char *musicPath = "assets/audio/music.ogg";
-    g_musicLoaded = 0;
-    if (FileExists(musicPath)) {
-        g_music = LoadMusicStream(musicPath);
-        if (IsMusicValid(g_music)) {
-            SetMusicVolume(g_music, masterVol * musicVol);
-            PlayMusicStream(g_music);
-            g_musicLoaded = 1;
+    /* Load music tracks */
+    for (int m = 1; m < MUSIC_TRACK_COUNT; m++) {
+        g_musicLoaded[m] = 0;
+        const char *p = ResolveAssetPath(kMusicPaths[m], resolved, sizeof(resolved));
+        if (FileExists(p)) {
+            g_music[m] = LoadMusicStream(p);
+            if (IsMusicValid(g_music[m])) {
+                g_music[m].looping = 1;
+                SetMusicVolume(g_music[m], masterVol * musicVol);
+                g_musicLoaded[m] = 1;
+            }
         }
     }
 }
 
 void Audio_Shutdown(AudioManager *am) {
     if (!am->initialized) return;
-    if (g_musicLoaded) {
-        StopMusicStream(g_music);
-        UnloadMusicStream(g_music);
-        g_musicLoaded = 0;
+
+    for (int m = 1; m < MUSIC_TRACK_COUNT; m++) {
+        if (g_musicLoaded[m]) {
+            StopMusicStream(g_music[m]);
+            UnloadMusicStream(g_music[m]);
+            g_musicLoaded[m] = 0;
+        }
     }
+
     for (int i = 0; i < SFX_COUNT; i++) {
         if (g_sfxLoaded[i]) {
             UnloadSound(g_sfx[i]);
@@ -95,15 +120,50 @@ void Audio_SetVolumes(AudioManager *am, float master, float music, float sfx) {
     am->musicVol  = music;
     am->sfxVol    = sfx;
     if (!am->initialized) return;
+
     for (int i = 0; i < SFX_COUNT; i++) {
         if (g_sfxLoaded[i]) SetSoundVolume(g_sfx[i], master * sfx);
     }
-    if (g_musicLoaded) SetMusicVolume(g_music, master * music);
+    for (int m = 1; m < MUSIC_TRACK_COUNT; m++) {
+        if (g_musicLoaded[m]) SetMusicVolume(g_music[m], master * music);
+    }
+}
+
+void Audio_PlayMusicTrack(AudioManager *am, MusicTrackId track) {
+    if (!am->initialized) return;
+    if (track == am->currentTrack) return;
+
+    /* Stop currently playing track */
+    if (am->currentTrack > MUSIC_TRACK_NONE && am->currentTrack < MUSIC_TRACK_COUNT) {
+        if (g_musicLoaded[am->currentTrack]) {
+            StopMusicStream(g_music[am->currentTrack]);
+        }
+    }
+
+    am->currentTrack = track;
+    if (track > MUSIC_TRACK_NONE && track < MUSIC_TRACK_COUNT) {
+        if (g_musicLoaded[track]) {
+            PlayMusicStream(g_music[track]);
+        }
+    }
+}
+
+void Audio_StopMusic(AudioManager *am) {
+    if (!am->initialized) return;
+    if (am->currentTrack > MUSIC_TRACK_NONE && am->currentTrack < MUSIC_TRACK_COUNT) {
+        if (g_musicLoaded[am->currentTrack]) {
+            StopMusicStream(g_music[am->currentTrack]);
+        }
+    }
+    am->currentTrack = MUSIC_TRACK_NONE;
 }
 
 void Audio_UpdateMusic(AudioManager *am, float dt) {
     (void)dt;
-    if (!am->initialized || !g_musicLoaded) return;
-    UpdateMusicStream(g_music);
+    if (!am->initialized) return;
+    if (am->currentTrack > MUSIC_TRACK_NONE && am->currentTrack < MUSIC_TRACK_COUNT) {
+        if (g_musicLoaded[am->currentTrack]) {
+            UpdateMusicStream(g_music[am->currentTrack]);
+        }
+    }
 }
-

@@ -1,10 +1,12 @@
 # Build artefacts
-build/*.o
-build/*.d
-build/*.exe
-build/*.dll
-build/*.so
-build/*.dylib
+build/
+tools/*.exe
+*.o
+*.d
+*.exe
+*.dll
+*.so
+*.dylib
 
 # Runtime data & saves
 *.dat

@@ -109,54 +109,107 @@ void Enemy_TakeDamage(Enemy *e, int dmg) {
 
 /* ─── AI helpers ─────────────────────────────────────── */
 
-static void MoveToward(Enemy *e, Vector2 target, float speed, float dt) {
-    Vector2 dir = Vec2Norm(Vec2Sub(target, e->pos));
+static void ScoutAI(Enemy *e, Vector2 playerPos, float dt) {
+    /* Scouts (Synod Dagger Interceptors): Fast dogfighters that keep standoff
+       distance, strafe, and peel away so they NEVER ram into the player */
+    float dist = Vec2Dist(e->pos, playerPos);
+    Vector2 dir = Vec2Norm(Vec2Sub(playerPos, e->pos));
+
+    if (dist < 190.0f) {
+        /* Too close: break off / peel away sharply to prevent hitting player */
+        Vector2 escapeDir = { -dir.y * e->strafeDir, dir.x * e->strafeDir };
+        e->vel.x += (escapeDir.x * 0.8f - dir.x * 0.6f) * SCOUT_SPEED * 2.2f * dt;
+        e->vel.y += (escapeDir.y * 0.8f - dir.y * 0.6f) * SCOUT_SPEED * 2.2f * dt;
+    } else if (dist > 270.0f) {
+        /* Close distance to attack range */
+        e->vel.x += dir.x * SCOUT_SPEED * 1.5f * dt;
+        e->vel.y += dir.y * SCOUT_SPEED * 1.5f * dt;
+    } else {
+        /* Circle / dogfight at standoff range */
+        Vector2 perp = { -dir.y * e->strafeDir, dir.x * e->strafeDir };
+        e->vel.x += perp.x * SCOUT_SPEED * 1.3f * dt;
+        e->vel.y += perp.y * SCOUT_SPEED * 1.3f * dt;
+    }
+
+    float s = Vec2Len(e->vel);
+    if (s > SCOUT_SPEED * 1.3f) e->vel = Vec2Scale(Vec2Norm(e->vel), SCOUT_SPEED * 1.3f);
+
+    /* Aim at player to fire cannons */
     float targetAngle = RAD2DEG(atan2f(dir.x, -dir.y));
-    /* Smooth rotation */
     float diff = targetAngle - e->rotation;
     while (diff >  180.0f) diff -= 360.0f;
     while (diff < -180.0f) diff += 360.0f;
-    e->rotation += diff * MIN(1.0f, dt * 4.0f);
-
-    e->vel.x += dir.x * speed * dt;
-    e->vel.y += dir.y * speed * dt;
-    float maxSpd = kMeta[e->type].speed;
-    float s = Vec2Len(e->vel);
-    if (s > maxSpd) { e->vel = Vec2Scale(Vec2Norm(e->vel), maxSpd); }
-}
-
-static void ScoutAI(Enemy *e, Vector2 playerPos, float dt) {
-    /* Scouts fly straight at the player, fast */
-    MoveToward(e, playerPos, SCOUT_SPEED * 2.0f, dt);
+    e->rotation += diff * MIN(1.0f, dt * 5.0f);
 }
 
 static void InterceptorAI(Enemy *e, Vector2 playerPos, float dt) {
+    /* Interceptors (Synod Jackal Heavy Fighters): Tactical flankers that maintain
+       combat distance and reverse thrusters when the player flies near */
+    float dist = Vec2Dist(e->pos, playerPos);
+    Vector2 dir = Vec2Norm(Vec2Sub(playerPos, e->pos));
+
     e->stateTimer -= dt;
     if (e->stateTimer <= 0.0f) {
-        e->state = (e->state == ESTATE_APPROACH) ? ESTATE_STRAFE : ESTATE_APPROACH;
-        e->stateTimer = RandFloat(1.0f, 3.0f);
+        e->stateTimer = RandFloat(2.0f, 4.0f);
         e->strafeDir = -e->strafeDir;
     }
-    if (e->state == ESTATE_APPROACH) {
-        MoveToward(e, playerPos, INTERCEPTOR_SPEED, dt);
+
+    if (dist < 190.0f) {
+        /* Active reverse thrust to prevent ramming */
+        e->vel.x -= dir.x * INTERCEPTOR_SPEED * 1.8f * dt;
+        e->vel.y -= dir.y * INTERCEPTOR_SPEED * 1.8f * dt;
+    } else if (dist > 320.0f) {
+        /* Approach to engagement envelope */
+        e->vel.x += dir.x * INTERCEPTOR_SPEED * dt;
+        e->vel.y += dir.y * INTERCEPTOR_SPEED * dt;
     } else {
-        /* Strafe: perpendicular to player */
-        Vector2 dir = Vec2Norm(Vec2Sub(playerPos, e->pos));
+        /* Flanking strafe */
         Vector2 perp = { -dir.y * e->strafeDir, dir.x * e->strafeDir };
-        e->vel.x += perp.x * INTERCEPTOR_SPEED * dt;
-        e->vel.y += perp.y * INTERCEPTOR_SPEED * dt;
-        float s = Vec2Len(e->vel);
-        if (s > INTERCEPTOR_SPEED) e->vel = Vec2Scale(Vec2Norm(e->vel), INTERCEPTOR_SPEED);
-        float targetAngle = RAD2DEG(atan2f(dir.x, -dir.y));
-        float diff = targetAngle - e->rotation;
-        while (diff >  180.0f) diff -= 360.0f;
-        while (diff < -180.0f) diff += 360.0f;
-        e->rotation += diff * MIN(1.0f, dt * 3.0f);
+        e->vel.x += perp.x * INTERCEPTOR_SPEED * 1.2f * dt;
+        e->vel.y += perp.y * INTERCEPTOR_SPEED * 1.2f * dt;
     }
+
+    float s = Vec2Len(e->vel);
+    if (s > INTERCEPTOR_SPEED) e->vel = Vec2Scale(Vec2Norm(e->vel), INTERCEPTOR_SPEED);
+
+    /* Track player */
+    float targetAngle = RAD2DEG(atan2f(dir.x, -dir.y));
+    float diff = targetAngle - e->rotation;
+    while (diff >  180.0f) diff -= 360.0f;
+    while (diff < -180.0f) diff += 360.0f;
+    e->rotation += diff * MIN(1.0f, dt * 3.5f);
 }
 
 static void TankAI(Enemy *e, Vector2 playerPos, float dt) {
-    MoveToward(e, playerPos, TANK_SPEED, dt);
+    /* Tanks (Synod Bulwark Ironclads): Heavy armored fortresses.
+       Stands off at long range and rotates heavy turrets, never rams */
+    float dist = Vec2Dist(e->pos, playerPos);
+    Vector2 dir = Vec2Norm(Vec2Sub(playerPos, e->pos));
+
+    if (dist > 360.0f) {
+        /* Slow advance */
+        e->vel.x += dir.x * TANK_SPEED * dt;
+        e->vel.y += dir.y * TANK_SPEED * dt;
+    } else if (dist < 260.0f) {
+        /* Too close: back off to keep firing line */
+        e->vel.x -= dir.x * TANK_SPEED * 1.4f * dt;
+        e->vel.y -= dir.y * TANK_SPEED * 1.4f * dt;
+    } else {
+        /* Slow lateral orbit */
+        Vector2 perp = { -dir.y * e->strafeDir, dir.x * e->strafeDir };
+        e->vel.x += perp.x * TANK_SPEED * 0.6f * dt;
+        e->vel.y += perp.y * TANK_SPEED * 0.6f * dt;
+    }
+
+    float s = Vec2Len(e->vel);
+    if (s > TANK_SPEED) e->vel = Vec2Scale(Vec2Norm(e->vel), TANK_SPEED);
+
+    /* Aim heavy turret at player */
+    float targetAngle = RAD2DEG(atan2f(dir.x, -dir.y));
+    float diff = targetAngle - e->rotation;
+    while (diff >  180.0f) diff -= 360.0f;
+    while (diff < -180.0f) diff += 360.0f;
+    e->rotation += diff * MIN(1.0f, dt * 2.5f);
 }
 
 static void BomberAI(Enemy *e, Vector2 playerPos, float dt) {

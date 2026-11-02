@@ -2,6 +2,7 @@
  * menu.c - Menu screens (Main, Pause, Game Over, Settings)
  */
 #include "menu.h"
+#include "audio.h"
 #include "utils.h"
 #include "config.h"
 #include "settings.h"
@@ -90,11 +91,14 @@ void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
 
     if (IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W)) {
         ms->selectedItem = (ms->selectedItem - 1 + kMainCount) % kMainCount;
+        Game_PlaySFX(SFX_MENU_SELECT);
     }
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
         ms->selectedItem = (ms->selectedItem + 1) % kMainCount;
+        Game_PlaySFX(SFX_MENU_SELECT);
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        Game_PlaySFX(SFX_MENU_CONFIRM);
         switch (ms->selectedItem) {
             case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
             case 1: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
@@ -111,8 +115,12 @@ void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
         Rectangle r = { (float)(screenW / 2 - tw / 2 - 30), (float)(menuY + i * 48 - 4),
                         (float)(tw + 60), 38.0f };
         if (CheckCollisionPointRec(GetMousePosition(), r)) {
-            ms->selectedItem = i;
+            if (ms->selectedItem != i) {
+                ms->selectedItem = i;
+                Game_PlaySFX(SFX_MENU_SELECT);
+            }
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                Game_PlaySFX(SFX_MENU_CONFIRM);
                 switch (i) {
                     case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
                     case 1: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
@@ -162,15 +170,21 @@ void Menu_UpdatePause(MenuState *ms, GameContext *ctx, float dt) {
     ms->titleAnim += dt;
     for (int i = 0; i < kPauseCount; i++) ms->itemAnim[i] += dt;
 
-    if (IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W))
+    if (IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W)) {
         ms->selectedItem = (ms->selectedItem - 1 + kPauseCount) % kPauseCount;
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
         ms->selectedItem = (ms->selectedItem + 1) % kPauseCount;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
     if (IsKeyPressed(KEY_ESCAPE)) {
+        Game_PlaySFX(SFX_MENU_CONFIRM);
         Game_ChangeState(ctx, STATE_PLAYING);
         return;
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        Game_PlaySFX(SFX_MENU_CONFIRM);
         switch (ms->selectedItem) {
             case 0: Game_ChangeState(ctx, STATE_PLAYING);  break;
             case 1: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
@@ -190,8 +204,12 @@ void Menu_UpdatePause(MenuState *ms, GameContext *ctx, float dt) {
         Rectangle r = { (float)(screenW / 2 - tw / 2 - 20), (float)(menuY + i * 52 - 4),
                         (float)(tw + 40), 36.0f };
         if (CheckCollisionPointRec(GetMousePosition(), r)) {
-            ms->selectedItem = i;
+            if (ms->selectedItem != i) {
+                ms->selectedItem = i;
+                Game_PlaySFX(SFX_MENU_SELECT);
+            }
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                Game_PlaySFX(SFX_MENU_CONFIRM);
                 switch (i) {
                     case 0: Game_ChangeState(ctx, STATE_PLAYING);  break;
                     case 1: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
@@ -240,11 +258,16 @@ void Menu_UpdateGameOver(MenuState *ms, GameContext *ctx, float dt) {
     ms->titleAnim += dt;
     for (int i = 0; i < kGoCount; i++) ms->itemAnim[i] += dt;
 
-    if (IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W))
+    if (IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W)) {
         ms->selectedItem = (ms->selectedItem - 1 + kGoCount) % kGoCount;
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
         ms->selectedItem = (ms->selectedItem + 1) % kGoCount;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        Game_PlaySFX(SFX_MENU_CONFIRM);
         switch (ms->selectedItem) {
             case 0: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING);   break;
             case 1: Game_ChangeState(ctx, STATE_MAIN_MENU); break;
@@ -254,16 +277,20 @@ void Menu_UpdateGameOver(MenuState *ms, GameContext *ctx, float dt) {
 
     /* Mouse support */
     int screenW = GetScreenWidth(), screenH = GetScreenHeight();
-    int ty = (int)((float)screenH * 0.22f);
-    int statY = ty + 64 + 30;
-    int menuY = statY + 110;
+    int ty = (int)((float)screenH * 0.18f);
+    int statY = ty + 56 + 36;
+    int menuY = statY + 98;
     for (int i = 0; i < kGoCount; i++) {
         int tw = MeasureText(kGoItems[i], 28);
         Rectangle r = { (float)(screenW / 2 - tw / 2 - 20), (float)(menuY + i * 52 - 4),
                         (float)(tw + 40), 40.0f };
         if (CheckCollisionPointRec(GetMousePosition(), r)) {
-            ms->selectedItem = i;
+            if (ms->selectedItem != i) {
+                ms->selectedItem = i;
+                Game_PlaySFX(SFX_MENU_SELECT);
+            }
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                Game_PlaySFX(SFX_MENU_CONFIRM);
                 switch (i) {
                     case 0: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
                     case 1: Game_ChangeState(ctx, STATE_MAIN_MENU); break;
@@ -280,37 +307,32 @@ void Menu_DrawGameOver(const MenuState *ms, const GameContext *ctx,
 
     float pulse = 0.5f + 0.5f * sinf(ms->titleAnim * 3.0f);
 
-    const char *goText = "MISSION FAILED";
-    int fontSize = 56;
+    const char *goText = "GAME OVER";
+    int fontSize = 64;
     int tw = MeasureText(goText, fontSize);
-    int ty = (int)((float)screenH * 0.18f);
+    int ty = (int)((float)screenH * 0.22f);
 
     DrawText(goText, screenW / 2 - tw / 2 + 2, ty + 2, fontSize,
              (Color){200, 0, 0, (unsigned char)(100 + pulse * 80)});
     DrawText(goText, screenW / 2 - tw / 2, ty, fontSize,
-             (Color){255, 60, 60, 255});
-
-    /* Subtitle Lore */
-    const char *sub = "HK-01 VANGUARD SIGNAL LOST  //  SECTOR OVERRUN";
-    int sw = MeasureText(sub, 14);
-    DrawText(sub, screenW / 2 - sw / 2, ty + fontSize + 8, 14, (Color){255, 120, 120, 220});
+             (Color){255, 50, 50, 255});
 
     /* Stats */
     char buf[80];
-    int statY = ty + fontSize + 36;
-    snprintf(buf, sizeof(buf), "PILOT: HARPER KOLLINS  //  SCORE: %d", ctx->score);
+    int statY = ty + fontSize + 30;
+    snprintf(buf, sizeof(buf), "SCORE:  %d", ctx->score);
+    tw = MeasureText(buf, 24);
+    DrawText(buf, screenW / 2 - tw / 2, statY, 24, WHITE);
+
+    snprintf(buf, sizeof(buf), "BEST:   %d", ctx->highScore);
     tw = MeasureText(buf, 20);
-    DrawText(buf, screenW / 2 - tw / 2, statY, 20, WHITE);
+    DrawText(buf, screenW / 2 - tw / 2, statY + 32, 20, (Color){255, 200, 80, 220});
 
-    snprintf(buf, sizeof(buf), "ALL-TIME RECORD:  %d", ctx->highScore);
-    tw = MeasureText(buf, 18);
-    DrawText(buf, screenW / 2 - tw / 2, statY + 28, 18, (Color){255, 215, 0, 220});
+    snprintf(buf, sizeof(buf), "WAVE:   %d", ctx->wave);
+    tw = MeasureText(buf, 20);
+    DrawText(buf, screenW / 2 - tw / 2, statY + 60, 20, (Color){0, 200, 255, 200});
 
-    snprintf(buf, sizeof(buf), "SECTOR SURVIVED: WAVE %d", ctx->wave);
-    tw = MeasureText(buf, 18);
-    DrawText(buf, screenW / 2 - tw / 2, statY + 54, 18, (Color){0, 220, 255, 220});
-
-    int menuY = statY + 98;
+    int menuY = statY + 110;
     for (int i = 0; i < kGoCount; i++) {
         DrawMenuItem(kGoItems[i], screenW / 2, menuY + i * 52, 28,
                      ms->selectedItem == i, ms->itemAnim[i]);
@@ -592,6 +614,7 @@ void Menu_UpdatePrologue(MenuState *ms, GameContext *ctx, float dt) {
     /* Skip on any key or click */
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
         IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        Game_PlaySFX(SFX_MENU_CONFIRM);
         Game_StartNewGame(ctx);
         Game_ChangeState(ctx, STATE_PLAYING);
         return;

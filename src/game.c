@@ -74,6 +74,7 @@ void Game_Init(GameContext *ctx) {
                ctx->settings.masterVolume,
                ctx->settings.musicVolume,
                ctx->settings.sfxVolume);
+    Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_INTRO);
 
     ctx->state     = STATE_MAIN_MENU;
     ctx->prevState = STATE_MAIN_MENU;
@@ -93,6 +94,20 @@ void Game_ChangeState(GameContext *ctx, GameState next) {
     ctx->prevState = ctx->state;
     ctx->state     = next;
     g_menu.selectedItem = 0;
+
+    if (next == STATE_MAIN_MENU || next == STATE_PROLOGUE ||
+        next == STATE_SETTINGS  || next == STATE_CONTROLS) {
+        Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_INTRO);
+    } else if (next == STATE_PLAYING || next == STATE_PAUSED) {
+        Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_BATTLE);
+    } else if (next == STATE_GAME_OVER) {
+        Audio_StopMusic(&g_audio);
+        Audio_PlaySFX(&g_audio, SFX_GAME_OVER);
+    }
+}
+
+void Game_PlaySFX(int sfxId) {
+    Audio_PlaySFX(&g_audio, (SfxId)sfxId);
 }
 
 void Game_AddScore(GameContext *ctx, int points) {

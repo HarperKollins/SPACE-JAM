@@ -141,20 +141,24 @@ int Collision_Update(
         }
     }
 
-    /* ─── Enemies vs player ─────────────────────────── */
-    if (Player_IsAlive(player) && player->iFrameTimer <= 0.0f) {
+    /* ─── Enemies vs player (deflector repulsorfields) ───────────────── */
+    /* Enemy ships do NOT deal hull ramming damage. If craft get close,
+       their repulsorfields gently deflect each other away */
+    if (Player_IsAlive(player)) {
         for (int ei = 0; ei < MAX_ENEMIES; ei++) {
             Enemy *e = &enemies->enemies[ei];
             if (!e->active || e->state == ESTATE_DYING) continue;
 
-            if (CheckCircleCircle(player->pos, PLAYER_RADIUS, e->pos, e->radius)) {
-                Player_TakeDamage(player, 20);
-                Audio_PlaySFX(audio, SFX_PLAYER_HIT);
-                /* Bounce enemy back */
-                Vector2 push = Vec2Norm(Vec2Sub(e->pos, player->pos));
-                e->vel = Vec2Scale(push, 150.0f);
-                Particles_SpawnSparks(particles, player->pos, 10, (Color){255, 200, 0, 255});
-                ctx->screenShake = CLAMP(ctx->screenShake + 5.0f, 0.0f, SCREEN_SHAKE_MAX * 1.5f);
+            if (CheckCircleCircle(player->pos, PLAYER_RADIUS + 4.0f, e->pos, e->radius + 4.0f)) {
+                Vector2 diff = Vec2Sub(e->pos, player->pos);
+                float pLen = Vec2Len(diff);
+                if (pLen > 0.001f) {
+                    Vector2 norm = Vec2Scale(diff, 1.0f / pLen);
+                    e->vel = Vec2Add(e->vel, Vec2Scale(norm, 180.0f));
+                    player->vel = Vec2Sub(player->vel, Vec2Scale(norm, 90.0f));
+                }
+                Vector2 mid = { (player->pos.x + e->pos.x) * 0.5f, (player->pos.y + e->pos.y) * 0.5f };
+                Particles_SpawnSparks(particles, mid, 4, (Color){ 0, 220, 255, 180 });
             }
         }
     }
@@ -193,58 +197,75 @@ int Collision_Update(
         }
     }
 
-    /* ─── Enemy fire (bombers, boss) ────────────────── */
+    /* ─── Enemy weapon fire (all craft engage with ranged weapons) ─── */
     for (int ei = 0; ei < MAX_ENEMIES; ei++) {
         Enemy *e = &enemies->enemies[ei];
         if (!e->active || e->state == ESTATE_DYING) continue;
 
         int shouldFire = 0;
-        float interval = 0.0f;
+        float nextInterval = 2.0f;
 
-        if (e->type == ENEMY_BOMBER && e->fireTimer <= 0.0f) {
-            interval = BOMBER_FIRE_INTERVAL;
+        if (e->type == ENEMY_SCOUT && e->fireTimer <= 0.0f) {
+            nextInterval = 1.9f + RandFloat(-0.2f, 0.3f);
             shouldFire = 1;
-        }
-        if (e->type == ENEMY_BOSS && e->fireTimer <= 0.0f) {
-            interval = BOSS_BULLET_INTERVAL * (e->bossPhase == 2 ? 0.55f : 1.0f);
+        } else if (e->type == ENEMY_INTERCEPTOR && e->fireTimer <= 0.0f) {
+            nextInterval = 1.7f + RandFloat(-0.2f, 0.2f);
             shouldFire = 1;
-        }
-        if (e->type == ENEMY_INTERCEPTOR && e->fireTimer <= 0.0f) {
-            interval = 2.5f;
+        } else if (e->type == ENEMY_TANK && e->fireTimer <= 0.0f) {
+            nextInterval = 2.2f + RandFloat(-0.2f, 0.3f);
+            shouldFire = 1;
+        } else if (e->type == ENEMY_BOMBER && e->fireTimer <= 0.0f) {
+            nextInterval = BOMBER_FIRE_INTERVAL;
+            shouldFire = 1;
+        } else if (e->type == ENEMY_BOSS && e->fireTimer <= 0.0f) {
+            nextInterval = BOSS_BULLET_INTERVAL * (e->bossPhase == 2 ? 0.55f : 1.0f);
             shouldFire = 1;
         }
 
-        if (shouldFire) {
-            e->fireTimer = interval;
+        if (shouldFire && Player_IsAlive(player)) {
+            e->fireTimer = nextInterval;
             Vector2 dir = Vec2Norm(Vec2Sub(player->pos, e->pos));
-            Color bulletCol = (Color){255, 80, 20, 255};
 
-            if (e->type == ENEMY_BOSS) {
+            Audio_PlaySFX(audio, SFX_ENEMY_SHOOT);
+
+            if (e->type == ENEMY_SCOUT) {
+                /* Fast red dart blaster */
+                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 390.0f, 4.0f,
+                                        8, (Color){ 255, 60, 60, 255 });
+            } else if (e->type == ENEMY_INTERCEPTOR) {
+                /* Twin red plasma cannons */
+                float baseAngle = RAD2DEG(atan2f(dir.x, -dir.y));
+                Vector2 d1 = AngleToDir(baseAngle - 8.0f);
+                Vector2 d2 = AngleToDir(baseAngle + 8.0f);
+                Projectile_SpawnEnemyEx(projectiles, e->pos, d1, 360.0f, 4.8f,
+                                        10, (Color){ 255, 40, 50, 255 });
+                Projectile_SpawnEnemyEx(projectiles, e->pos, d2, 360.0f, 4.8f,
+                                        10, (Color){ 255, 40, 50, 255 });
+            } else if (e->type == ENEMY_TANK) {
+                /* Heavy turbolaser shell: high caliber, punchy red energy bolt */
+                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 290.0f, 7.5f,
+                                        18, (Color){ 255, 90, 20, 255 });
+            } else if (e->type == ENEMY_BOMBER) {
+                /* Long-range plasma torpedo */
+                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 260.0f, 6.5f,
+                                        14, (Color){ 255, 140, 20, 255 });
+            } else if (e->type == ENEMY_BOSS) {
                 if (e->bossPhase == 2) {
-                    /* Phase 2: spread shot (5 bullets) */
+                    /* Phase 2: spread barrage (5 bullets) */
                     for (int k = -2; k <= 2; k++) {
                         float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 14.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
-                        Projectile_SpawnEnemy(projectiles, e->pos, spreadDir,
-                                              ENEMY_BULLET_DAMAGE + 5, (Color){255, 30, 200, 255});
+                        Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 350.0f, 6.0f,
+                                                14, (Color){ 255, 30, 200, 255 });
                     }
                 } else {
-                    /* Phase 1: aimed triple shot */
+                    /* Phase 1: aimed triple turbolasers */
                     for (int k = -1; k <= 1; k++) {
                         float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 18.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
-                        Projectile_SpawnEnemy(projectiles, e->pos, spreadDir,
-                                              ENEMY_BULLET_DAMAGE, (Color){180, 0, 255, 255});
+                        Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 320.0f, 5.5f,
+                                                12, (Color){ 220, 30, 60, 255 });
                     }
-                }
-            } else {
-                Projectile_SpawnEnemy(projectiles, e->pos, dir, ENEMY_BULLET_DAMAGE, bulletCol);
-                /* Double shot for interceptor */
-                if (e->type == ENEMY_INTERCEPTOR) {
-                    float a2 = RAD2DEG(atan2f(dir.x, -dir.y)) + 12.0f;
-                    float a3 = RAD2DEG(atan2f(dir.x, -dir.y)) - 12.0f;
-                    Projectile_SpawnEnemy(projectiles, e->pos, AngleToDir(a2), ENEMY_BULLET_DAMAGE, bulletCol);
-                    Projectile_SpawnEnemy(projectiles, e->pos, AngleToDir(a3), ENEMY_BULLET_DAMAGE, bulletCol);
                 }
             }
         }

@@ -40,6 +40,7 @@ void Projectiles_Draw(const ProjectilePool *pool);
 /* Spawn helpers — return 1 on success, 0 if pool full */
 int Projectile_SpawnPlayer(ProjectilePool *pool, Vector2 pos, Vector2 dir, int damage);
 int Projectile_SpawnEnemy(ProjectilePool *pool, Vector2 pos, Vector2 dir, int damage, Color color);
+int Projectile_SpawnEnemyEx(ProjectilePool *pool, Vector2 pos, Vector2 dir, float speed, float radius, int damage, Color color);
 
 void Projectiles_KillPlayer(ProjectilePool *pool, int index);
 void Projectiles_KillEnemy(ProjectilePool *pool, int index);
