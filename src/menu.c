@@ -540,9 +540,9 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     startY += 26;
 
     struct { const char *key; const char *action; } combat[] = {
-        { "SPACE",  "Fire weapon"  },
-        { "ESC",    "Pause game"   },
-        { "F1",     "Toggle controls hint" },
+        { "SPACE / LEFT CLICK",  "Fire weapons"  },
+        { "ESC",                 "Pause / leave game"   },
+        { "F1",                  "Toggle controls hint" },
     };
     for (int i = 0; i < 3; i++) {
         DrawText(combat[i].key,    col1, startY + i * rowH, fs, keyCol);

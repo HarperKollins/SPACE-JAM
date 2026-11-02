@@ -210,6 +210,15 @@ void Game_Update(GameContext *ctx, float dt) {
     int sh = GetScreenHeight();
 
     Starfield_Update(&g_stars, dt, sw, sh);
+
+    /* Ensure correct music track is active */
+    if (ctx->state == STATE_MAIN_MENU || ctx->state == STATE_PROLOGUE ||
+        ctx->state == STATE_SETTINGS  || ctx->state == STATE_CONTROLS) {
+        Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_INTRO);
+    } else if (ctx->state == STATE_PLAYING || ctx->state == STATE_PAUSED) {
+        Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_BATTLE);
+    }
+
     Audio_UpdateMusic(&g_audio, dt);
 
     switch (ctx->state) {
@@ -506,7 +515,7 @@ void Game_Draw(GameContext *ctx) {
             DrawText("W / UP     Thrust",  hx, hy + 18, 13, (Color){0, 220, 255, ta});
             DrawText("S / DOWN   Brake",   hx, hy + 36, 13, (Color){0, 220, 255, ta});
             DrawText("A / D      Rotate",  hx, hy + 54, 13, (Color){0, 220, 255, ta});
-            DrawText("SPACE      Fire",    hx, hy + 72, 13, (Color){0, 220, 255, ta});
+            DrawText("SPACE/CLICK Fire",   hx, hy + 72, 13, (Color){0, 220, 255, ta});
             DrawText("ESC        Pause",   hx, hy + 90, 13, (Color){0, 220, 255, ta});
             DrawText("F1         Toggle",  hx, hy + 108, 13, (Color){160, 160, 200, ta});
             DrawText("Press F1 to hide",   hx, hy + 132, 11, (Color){120, 120, 160, (unsigned char)(ta / 2)});

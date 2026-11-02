@@ -152,9 +152,9 @@
 /* ──────────────────────────────────────────────────────────
    Audio
 ────────────────────────────────────────────────────────── */
-#define DEFAULT_MASTER_VOL  0.8f
-#define DEFAULT_MUSIC_VOL   0.45f
-#define DEFAULT_SFX_VOL     0.7f
+#define DEFAULT_MASTER_VOL  1.0f
+#define DEFAULT_MUSIC_VOL   0.85f
+#define DEFAULT_SFX_VOL     1.0f
 
 /* ──────────────────────────────────────────────────────────
    High Score

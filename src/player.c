@@ -350,7 +350,18 @@ void Player_TakeDamage(Player *p, int dmg) {
 int Player_TryShoot(Player *p, float dt) {
     (void)dt;
     if (p->dead) return 0;
-    if (!IsKeyDown(KEY_SPACE)) return 0;
+
+    int mouseFire = 0;
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        Vector2 mpos = GetMousePosition();
+        int sw = GetScreenWidth();
+        /* Do not fire if clicking HUD buttons in top right */
+        if (!(mpos.x > (float)(sw - 260) && mpos.y < 65.0f)) {
+            mouseFire = 1;
+        }
+    }
+
+    if (!IsKeyDown(KEY_SPACE) && !IsKeyDown(KEY_J) && !IsKeyDown(KEY_Z) && !mouseFire) return 0;
 
     float cooldown = BULLET_COOLDOWN;
     if (p->weapon == WEAPON_RAPID) cooldown *= 0.35f;
