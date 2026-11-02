@@ -1,0 +1,21 @@
+# Build artefacts
+build/*.o
+build/*.d
+build/*.exe
+build/*.dll
+build/*.so
+build/*.dylib
+
+# Runtime data & saves
+*.dat
+spacejam_scores.dat
+spacejam_settings.dat
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

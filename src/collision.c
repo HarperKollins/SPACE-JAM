@@ -1,0 +1,255 @@
+/**
+ * collision.c - Collision detection across all entity types
+ */
+#include "collision.h"
+#include "utils.h"
+#include "config.h"
+#include "powerup.h"
+#include <math.h>
+
+int CheckCircleCircle(Vector2 aPos, float aRad, Vector2 bPos, float bRad) {
+    float dx = aPos.x - bPos.x;
+    float dy = aPos.y - bPos.y;
+    float dist2 = dx * dx + dy * dy;
+    float radSum = aRad + bRad;
+    return dist2 <= radSum * radSum;
+}
+
+int Collision_Update(
+    Player        *player,
+    EnemyPool     *enemies,
+    AsteroidField *asteroids,
+    ProjectilePool *projectiles,
+    PowerupPool    *powerups,
+    ParticleSystem *particles,
+    GameContext    *ctx,
+    AudioManager   *audio)
+{
+    int scoreEarned = 0;
+
+    /* ─── Player bullets vs enemies ─────────────────── */
+    for (int bi = 0; bi < MAX_PLAYER_BULLETS; bi++) {
+        Projectile *b = &projectiles->player[bi];
+        if (!b->active) continue;
+
+        for (int ei = 0; ei < MAX_ENEMIES; ei++) {
+            Enemy *e = &enemies->enemies[ei];
+            if (!e->active || e->state == ESTATE_DYING) continue;
+
+            if (CheckCircleCircle(b->pos, b->radius, e->pos, e->radius)) {
+                Projectiles_KillPlayer(projectiles, bi);
+
+                /* Hit effect */
+                Particles_SpawnSparks(particles, b->pos, 6, b->color);
+
+                Enemy_TakeDamage(e, b->damage);
+
+                if (e->state == ESTATE_DYING) {
+                    /* Kill confirmed */
+                    int earned = e->score;
+                    /* Boss score */
+                    if (e->type == ENEMY_BOSS) earned = BOSS_SCORE;
+                    Game_AddScore(ctx, earned);
+                    scoreEarned += earned;
+
+                    /* Explosion sound */
+                    if (e->type == ENEMY_BOSS) {
+                        Audio_PlaySFX(audio, SFX_BOSS_EXPLODE);
+                    } else if (e->type == ENEMY_TANK) {
+                        Audio_PlaySFX(audio, SFX_EXPLOSION_LARGE);
+                    } else {
+                        Audio_PlaySFX(audio, SFX_EXPLOSION_SMALL);
+                    }
+
+                    /* Explosion */
+                    float exRad = e->radius;
+                    Color exCol = (e->type == ENEMY_BOSS) ?
+                                  (Color){180, 0, 255, 255} : (Color){255, 120, 0, 255};
+                    Particles_SpawnExplosion(particles, e->pos, exRad,  exCol, 20 + (int)(exRad));
+                    Particles_SpawnDebris(particles, e->pos, 8, exCol);
+
+                    /* Screen shake on boss death */
+                    if (e->type == ENEMY_BOSS) ctx->screenShake = SCREEN_SHAKE_MAX * 2.0f;
+                    else ctx->screenShake = CLAMP(ctx->screenShake + 3.0f, 0.0f, SCREEN_SHAKE_MAX);
+
+                    ctx->waveEnemiesKilled++;
+
+                    /* Power-up drop */
+                    if (RandChance(POWERUP_SPAWN_CHANCE)) {
+                        Powerup_SpawnRandom(powerups, e->pos);
+                    }
+                    if (e->type == ENEMY_BOSS) {
+                        /* Boss always drops max powerup */
+                        Powerup_Spawn(powerups, e->pos, POWERUP_INVINCIBLE);
+                    }
+                }
+                break; /* bullet consumed */
+            }
+        }
+    }
+
+    /* ─── Player bullets vs asteroids ──────────────── */
+    for (int bi = 0; bi < MAX_PLAYER_BULLETS; bi++) {
+        Projectile *b = &projectiles->player[bi];
+        if (!b->active) continue;
+
+        for (int ai = 0; ai < MAX_ASTEROIDS; ai++) {
+            Asteroid *a = &asteroids->asteroids[ai];
+            if (!a->active) continue;
+
+            if (CheckCircleCircle(b->pos, b->radius, a->pos, a->radius)) {
+                Projectiles_KillPlayer(projectiles, bi);
+                Particles_SpawnSparks(particles, b->pos, 4, (Color){180, 150, 100, 255});
+
+                /* Cache pos/color before Hit() deactivates the asteroid */
+                Vector2 aPos  = a->pos;
+                float   aRad  = a->radius;
+                Color   aCol  = a->color;
+                int earned = Asteroid_Hit(asteroids, ai, b->damage,
+                                          GetScreenWidth(), GetScreenHeight());
+                if (earned > 0) {
+                    Game_AddScore(ctx, earned);
+                    scoreEarned += earned;
+                    Audio_PlaySFX(audio, SFX_EXPLOSION_SMALL);
+                    Particles_SpawnExplosion(particles, aPos, aRad,
+                                            (Color){160, 140, 100, 255}, 12);
+                    Particles_SpawnDebris(particles, aPos, 5, aCol);
+                    ctx->screenShake = CLAMP(ctx->screenShake + 1.5f, 0.0f, SCREEN_SHAKE_MAX);
+
+                    if (RandChance(0.08f)) {
+                        Powerup_SpawnRandom(powerups, a->pos);
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    /* ─── Enemy bullets vs player ───────────────────── */
+    if (Player_IsAlive(player) && player->iFrameTimer <= 0.0f) {
+        for (int bi = 0; bi < MAX_ENEMY_BULLETS; bi++) {
+            Projectile *b = &projectiles->enemy[bi];
+            if (!b->active) continue;
+
+            if (CheckCircleCircle(b->pos, b->radius, player->pos, PLAYER_RADIUS)) {
+                Projectiles_KillEnemy(projectiles, bi);
+                Particles_SpawnSparks(particles, b->pos, 8, (Color){255, 100, 0, 255});
+                Player_TakeDamage(player, b->damage);
+                Audio_PlaySFX(audio, SFX_PLAYER_HIT);
+                ctx->screenShake = CLAMP(ctx->screenShake + 4.0f, 0.0f, SCREEN_SHAKE_MAX * 1.5f);
+            }
+        }
+    }
+
+    /* ─── Enemies vs player ─────────────────────────── */
+    if (Player_IsAlive(player) && player->iFrameTimer <= 0.0f) {
+        for (int ei = 0; ei < MAX_ENEMIES; ei++) {
+            Enemy *e = &enemies->enemies[ei];
+            if (!e->active || e->state == ESTATE_DYING) continue;
+
+            if (CheckCircleCircle(player->pos, PLAYER_RADIUS, e->pos, e->radius)) {
+                Player_TakeDamage(player, 20);
+                Audio_PlaySFX(audio, SFX_PLAYER_HIT);
+                /* Bounce enemy back */
+                Vector2 push = Vec2Norm(Vec2Sub(e->pos, player->pos));
+                e->vel = Vec2Scale(push, 150.0f);
+                Particles_SpawnSparks(particles, player->pos, 10, (Color){255, 200, 0, 255});
+                ctx->screenShake = CLAMP(ctx->screenShake + 5.0f, 0.0f, SCREEN_SHAKE_MAX * 1.5f);
+            }
+        }
+    }
+
+    /* ─── Asteroids vs player ───────────────────────── */
+    if (Player_IsAlive(player) && player->iFrameTimer <= 0.0f) {
+        for (int ai = 0; ai < MAX_ASTEROIDS; ai++) {
+            Asteroid *a = &asteroids->asteroids[ai];
+            if (!a->active) continue;
+
+            if (CheckCircleCircle(player->pos, PLAYER_RADIUS, a->pos, a->radius)) {
+                Player_TakeDamage(player, 15);
+                Audio_PlaySFX(audio, SFX_PLAYER_HIT);
+                /* Deflect asteroid */
+                Vector2 push = Vec2Norm(Vec2Sub(a->pos, player->pos));
+                a->vel.x += push.x * 120.0f;
+                a->vel.y += push.y * 120.0f;
+                Particles_SpawnSparks(particles, player->pos, 8, (Color){200, 180, 120, 255});
+                ctx->screenShake = CLAMP(ctx->screenShake + 3.5f, 0.0f, SCREEN_SHAKE_MAX * 1.5f);
+            }
+        }
+    }
+
+    /* ─── Powerups vs player ────────────────────────── */
+    if (Player_IsAlive(player)) {
+        for (int pi = 0; pi < MAX_POWERUPS; pi++) {
+            Powerup *pu = &powerups->powerups[pi];
+            if (!pu->active) continue;
+
+            if (CheckCircleCircle(player->pos, PLAYER_RADIUS, pu->pos, POWERUP_RADIUS)) {
+                Audio_PlaySFX(audio, SFX_POWERUP);
+                Particles_SpawnPowerup(particles, pu->pos, Powerup_GetColor(pu->type));
+                Player_ApplyPowerup(player, pu->type);
+                Powerup_Kill(powerups, pi);
+            }
+        }
+    }
+
+    /* ─── Enemy fire (bombers, boss) ────────────────── */
+    for (int ei = 0; ei < MAX_ENEMIES; ei++) {
+        Enemy *e = &enemies->enemies[ei];
+        if (!e->active || e->state == ESTATE_DYING) continue;
+
+        int shouldFire = 0;
+        float interval = 0.0f;
+
+        if (e->type == ENEMY_BOMBER && e->fireTimer <= 0.0f) {
+            interval = BOMBER_FIRE_INTERVAL;
+            shouldFire = 1;
+        }
+        if (e->type == ENEMY_BOSS && e->fireTimer <= 0.0f) {
+            interval = BOSS_BULLET_INTERVAL * (e->bossPhase == 2 ? 0.55f : 1.0f);
+            shouldFire = 1;
+        }
+        if (e->type == ENEMY_INTERCEPTOR && e->fireTimer <= 0.0f) {
+            interval = 2.5f;
+            shouldFire = 1;
+        }
+
+        if (shouldFire) {
+            e->fireTimer = interval;
+            Vector2 dir = Vec2Norm(Vec2Sub(player->pos, e->pos));
+            Color bulletCol = (Color){255, 80, 20, 255};
+
+            if (e->type == ENEMY_BOSS) {
+                if (e->bossPhase == 2) {
+                    /* Phase 2: spread shot (5 bullets) */
+                    for (int k = -2; k <= 2; k++) {
+                        float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 14.0f;
+                        Vector2 spreadDir = AngleToDir(spreadAngle);
+                        Projectile_SpawnEnemy(projectiles, e->pos, spreadDir,
+                                              ENEMY_BULLET_DAMAGE + 5, (Color){255, 30, 200, 255});
+                    }
+                } else {
+                    /* Phase 1: aimed triple shot */
+                    for (int k = -1; k <= 1; k++) {
+                        float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 18.0f;
+                        Vector2 spreadDir = AngleToDir(spreadAngle);
+                        Projectile_SpawnEnemy(projectiles, e->pos, spreadDir,
+                                              ENEMY_BULLET_DAMAGE, (Color){180, 0, 255, 255});
+                    }
+                }
+            } else {
+                Projectile_SpawnEnemy(projectiles, e->pos, dir, ENEMY_BULLET_DAMAGE, bulletCol);
+                /* Double shot for interceptor */
+                if (e->type == ENEMY_INTERCEPTOR) {
+                    float a2 = RAD2DEG(atan2f(dir.x, -dir.y)) + 12.0f;
+                    float a3 = RAD2DEG(atan2f(dir.x, -dir.y)) - 12.0f;
+                    Projectile_SpawnEnemy(projectiles, e->pos, AngleToDir(a2), ENEMY_BULLET_DAMAGE, bulletCol);
+                    Projectile_SpawnEnemy(projectiles, e->pos, AngleToDir(a3), ENEMY_BULLET_DAMAGE, bulletCol);
+                }
+            }
+        }
+    }
+
+    return scoreEarned;
+}
+
