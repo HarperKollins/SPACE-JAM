@@ -25,6 +25,7 @@ SOURCES := \
 	$(SRC_DIR)/hud.c        \
 	$(SRC_DIR)/menu.c       \
 	$(SRC_DIR)/audio.c      \
+	$(SRC_DIR)/progress.c   \
 	$(SRC_DIR)/highscore.c  \
 	$(SRC_DIR)/settings.c
 

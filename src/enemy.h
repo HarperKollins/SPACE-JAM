@@ -14,6 +14,7 @@ typedef enum {
     ENEMY_TANK,
     ENEMY_BOMBER,
     ENEMY_BOSS,
+    CIVILIAN_SHUTTLE,
     ENEMY_TYPE_COUNT
 } EnemyType;
 
@@ -64,10 +65,13 @@ void Enemies_Clear(EnemyPool *pool);
 
 int  Enemy_Spawn(EnemyPool *pool, EnemyType type, int screenW, int screenH);
 void Enemy_SpawnBoss(EnemyPool *pool, int screenW, int screenH);
+void Enemy_SpawnSectorBoss(EnemyPool *pool, int sector, int screenW, int screenH);
+int  Enemy_SpawnShuttle(EnemyPool *pool, int screenW, int screenH);
 void Enemy_TakeDamage(Enemy *e, int dmg);
 
 /* Returns slot index of boss, or -1 */
 int  Enemies_FindBoss(const EnemyPool *pool);
+const char *Enemy_GetBossName(int sector);
 
 /* Drawing helpers (also used by boss rendering) */
 void DrawEnemy(const Enemy *e);

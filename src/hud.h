@@ -12,8 +12,11 @@
 void HUD_Draw(const GameContext *ctx, const Player *player,
               const EnemyPool *enemies, int screenW, int screenH);
 
-/* Boss health bar (drawn separately so it can slide in/out) */
-void HUD_DrawBossBar(const Enemy *boss, int screenW, int screenH);
+/* Boss health bar */
+void HUD_DrawBossBar(const Enemy *boss, int wave, int screenW, int screenH);
+
+/* Medal award pop-up notification */
+void HUD_DrawMedalPopup(int medalId, float timer, int screenW);
 
 #endif /* SPACEJAM_HUD_H */
 

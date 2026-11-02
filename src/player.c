@@ -23,6 +23,7 @@ void Player_Init(Player *p, int screenW, int screenH) {
     p->deathTimer = 0.0f;
 
     p->weapon       = WEAPON_SINGLE;
+    p->shipTier     = SHIP_TIER_MK1;
     p->fireCooldown = 0.0f;
     p->rapidFireTimer   = 0.0f;
     p->doubleShotTimer  = 0.0f;
@@ -35,6 +36,15 @@ void Player_Init(Player *p, int screenW, int screenH) {
     p->flashTimer   = 0.0f;
     p->shieldActive = 0;
     p->isBoosting   = 0;
+}
+
+void Player_SetShipTier(Player *p, ShipTier tier) {
+    if (tier > p->shipTier) {
+        /* Hull upgrade bonus */
+        int bonus = (tier == SHIP_TIER_MK2) ? 20 : (tier == SHIP_TIER_MK3) ? 30 : 50;
+        p->health = MIN(PLAYER_MAX_HEALTH + bonus, p->health + bonus);
+    }
+    p->shipTier = tier;
 }
 
 /* ── Input & Physics ─────────────────────────────────── */
@@ -375,6 +385,36 @@ void Player_Draw(const Player *p) {
         }
         DrawCircleV(RP(-19, 0), 4.0f, wc);
         DrawCircleV(RP( 19, 0), 4.0f, wc);
+    }
+
+    /* 10. Visual Tier Hull Upgrades (Mk II, Mk III, Mk IV) */
+    if (p->shipTier >= SHIP_TIER_MK2) {
+        /* Mk II: Reinforced Titanium Prow Plating & Flank Sponsons */
+        Vector2 armorL[3] = { RP(-4.0f, -14.0f), RPB(-9.0f, -2.0f), RP(-4.0f, 2.0f) };
+        Vector2 armorR[3] = { RP( 4.0f, -14.0f), RPB( 9.0f, -2.0f), RP( 4.0f, 2.0f) };
+        DrawTriangle(armorL[0], armorL[1], armorL[2], (Color){ 70, 80, 100, 255 });
+        DrawTriangle(armorR[0], armorR[2], armorR[1], (Color){ 70, 80, 100, 255 });
+        DrawLineV(armorL[0], armorL[1], (Color){ 140, 160, 190, 255 });
+        DrawLineV(armorR[0], armorR[1], (Color){ 140, 160, 190, 255 });
+    }
+
+    if (p->shipTier >= SHIP_TIER_MK3) {
+        /* Mk III: Glowing Cyan Plasma Conduits etched into the swept wings */
+        float plasmaPulse = 0.7f + 0.3f * sinf(GetTime() * 12.0f);
+        Color conduitCol = (Color){ 0, 240, 255, (unsigned char)(220 * plasmaPulse) };
+        DrawLineEx(RP(0, -6), RPB(-16, 8), 1.8f, conduitCol);
+        DrawLineEx(RP(0, -6), RPB( 16, 8), 1.8f, conduitCol);
+        DrawCircleV(RPB(-20, -2), 2.5f, (Color){ 0, 255, 220, 255 });
+        DrawCircleV(RPB( 20, -2), 2.5f, (Color){ 0, 255, 220, 255 });
+    }
+
+    if (p->shipTier >= SHIP_TIER_MK4) {
+        /* Mk IV: Ascendant Royal Gold Trims & Particle Energy Radiance */
+        float goldPulse = 0.8f + 0.2f * sinf(GetTime() * 8.0f);
+        Color goldCol = (Color){ 255, 215, 0, (unsigned char)(230 * goldPulse) };
+        DrawLineEx(RP(0, -22), RPB(-21, 9), 2.2f, goldCol);
+        DrawLineEx(RP(0, -22), RPB( 21, 9), 2.2f, goldCol);
+        DrawCircleV(RP(0, -5), 3.0f, goldCol);
     }
 
     #undef RP

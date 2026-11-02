@@ -11,12 +11,13 @@
 typedef struct { float speed; int health; float radius; int score; } EnemyMeta;
 
 static const EnemyMeta kMeta[ENEMY_TYPE_COUNT] = {
-    [ENEMY_NONE]        = {0,               0,                  0,             0},
-    [ENEMY_SCOUT]       = {SCOUT_SPEED,      SCOUT_HEALTH,       SCOUT_RADIUS,  SCOUT_SCORE},
-    [ENEMY_INTERCEPTOR] = {INTERCEPTOR_SPEED,INTERCEPTOR_HEALTH, INTERCEPTOR_RADIUS,INTERCEPTOR_SCORE},
-    [ENEMY_TANK]        = {TANK_SPEED,       TANK_HEALTH,        TANK_RADIUS,   TANK_SCORE},
-    [ENEMY_BOMBER]      = {BOMBER_SPEED,     BOMBER_HEALTH,      BOMBER_RADIUS, BOMBER_SCORE},
-    [ENEMY_BOSS]        = {BOSS_SPEED,       BOSS_HEALTH,        BOSS_RADIUS,   BOSS_SCORE},
+    [ENEMY_NONE]        = {0,                0,                   0,              0},
+    [ENEMY_SCOUT]       = {SCOUT_SPEED,       SCOUT_HEALTH,        SCOUT_RADIUS,   SCOUT_SCORE},
+    [ENEMY_INTERCEPTOR] = {INTERCEPTOR_SPEED, INTERCEPTOR_HEALTH,  INTERCEPTOR_RADIUS, INTERCEPTOR_SCORE},
+    [ENEMY_TANK]        = {TANK_SPEED,        TANK_HEALTH,         TANK_RADIUS,    TANK_SCORE},
+    [ENEMY_BOMBER]      = {BOMBER_SPEED,      BOMBER_HEALTH,       BOMBER_RADIUS,  BOMBER_SCORE},
+    [ENEMY_BOSS]        = {BOSS_SPEED,        BOSS_HEALTH,         BOSS_RADIUS,    BOSS_SCORE},
+    [CIVILIAN_SHUTTLE]  = {130.0f,            70,                  18.0f,          500},
 };
 
 /* ─── Pool management ────────────────────────────────── */
@@ -76,6 +77,10 @@ int Enemy_Spawn(EnemyPool *pool, EnemyType type, int screenW, int screenH) {
 }
 
 void Enemy_SpawnBoss(EnemyPool *pool, int screenW, int screenH) {
+    Enemy_SpawnSectorBoss(pool, 0, screenW, screenH);
+}
+
+void Enemy_SpawnSectorBoss(EnemyPool *pool, int sector, int screenW, int screenH) {
     (void)screenH;
     int idx = FindFreeEnemy(pool);
     if (idx < 0) return;
@@ -85,7 +90,34 @@ void Enemy_SpawnBoss(EnemyPool *pool, int screenW, int screenH) {
     InitEnemy(e, ENEMY_BOSS, pos);
     e->bossPhase = 1;
     e->bossMovAngle = 0.0f;
+    /* Scale Boss HP across sectors */
+    e->health = BOSS_HEALTH + sector * 120;
+    e->healthMax = e->health;
     pool->count++;
+}
+
+int Enemy_SpawnShuttle(EnemyPool *pool, int screenW, int screenH) {
+    (void)screenW;
+    int idx = FindFreeEnemy(pool);
+    if (idx < 0) return 0;
+
+    Enemy *e = &pool->enemies[idx];
+    Vector2 pos = { -24.0f, (float)screenH * 0.72f + RandFloat(-30.0f, 30.0f) };
+    InitEnemy(e, CIVILIAN_SHUTTLE, pos);
+    e->vel = (Vector2){ 130.0f, -40.0f };
+    e->rotation = 68.0f;
+    e->fireTimer = 9999.0f; /* Shuttles do not attack */
+    pool->count++;
+    return 1;
+}
+
+const char *Enemy_GetBossName(int sector) {
+    switch (sector) {
+        case 0: return "COMMANDER VAREK // SYNOD CRUISER 'REAVER'";
+        case 1: return "INQUISITOR MALAKOR // SOLAR SIEGE PLATFORM 'HELIOS'";
+        case 2: return "HIGH ADMIRAL ZEPHYR // STEALTH CARRIER 'VOID STALKER'";
+        default: return "THE IRON ARCHON // CITADEL FLAGSHIP 'APOCALYPSE'";
+    }
 }
 
 int Enemies_FindBoss(const EnemyPool *pool) {
@@ -289,6 +321,16 @@ void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
             continue;
         }
 
+        if (e->type == CIVILIAN_SHUTTLE) {
+            e->pos.x += e->vel.x * dt;
+            e->pos.y += e->vel.y * dt;
+            if (e->pos.x > (float)screenW + 50.0f || e->pos.y < -50.0f) {
+                e->active = 0;
+                pool->count--;
+            }
+            continue;
+        }
+
         /* AI movement */
         switch (e->type) {
             case ENEMY_SCOUT:       ScoutAI(e, playerPos, dt);                       break;
@@ -329,52 +371,66 @@ void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
 
 /* ─── Drawing ────────────────────────────────────────── */
 
-/* Synod Faction Color Palette: Industrial Gunmetal, Cold Slate, Blood Crimson */
-static const Color kSynodHullDark  = {  36,  42,  52, 255 }; /* Heavy battleship steel */
-static const Color kSynodHullMid   = {  56,  64,  78, 255 }; /* Armor plates */
-static const Color kSynodHullLight = {  88,  98, 116, 255 }; /* Panel highlights */
-static const Color kSynodRed       = { 220,  30,  40, 255 }; /* Imperial red accents */
-static const Color kSynodRedGlow   = { 255,  50,  60, 255 }; /* Glowing sensor visors */
-static const Color kSynodRedDark   = { 120,  15,  22, 255 }; /* Crimson borders */
+/* Diverse Faction Palettes: Eliminates visual monotony */
+static const Color kHullDark     = {  32,  38,  48, 255 }; /* Heavy battleship steel */
+static const Color kHullMid      = {  52,  60,  74, 255 }; /* Armor plates */
+static const Color kHullLight    = {  84,  96, 114, 255 }; /* Panel highlights */
+
+/* Faction Accent Colors */
+static const Color kScoutCyan    = {   0, 220, 255, 255 }; /* Scout stealth cyan */
+static const Color kScoutGlow    = {  60, 255, 240, 255 };
+static const Color kJackalRed    = { 220,  30,  40, 255 }; /* Interceptor crimson */
+static const Color kJackalGold   = { 255, 195,  35, 255 }; /* Ace gold stripes */
+static const Color kTankAmber    = { 255, 180,  20, 255 }; /* Tank hazard amber */
+static const Color kTankGlow     = { 255, 220,  60, 255 };
+static const Color kBomberGreen  = {   0, 230, 140, 255 }; /* Bomber acid plasma */
+static const Color kBomberDark   = {  20,  80,  65, 255 };
+
+/* Boss Synod Dreadnought Palette */
+static const Color kSynodHullDark  = {  26,  28,  36, 255 };
+static const Color kSynodHullMid   = {  44,  48,  60, 255 };
+static const Color kSynodHullLight = {  70,  78,  94, 255 };
+static const Color kSynodRed       = { 220,  30,  40, 255 };
+static const Color kSynodRedDark   = { 140,  15,  25, 255 };
+static const Color kSynodRedGlow   = { 255,  60,  60, 255 };
 
 static void DrawScout(const Enemy *e) {
-    /* Synod "Dagger" Interceptor — Fast, predatory chevron dagger */
+    /* Synod "Dagger" Recon Interceptor — Graphite & Electric Cyan */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
-    /* Dual rear ion thrusters (red glow) */
+    /* Dual rear ion thrusters (cyan glow) */
     Vector2 tL = RP(-5, -9), tR = RP(5, -9);
-    DrawCircleV(tL, 2.5f, kSynodRedGlow);
-    DrawCircleV(tR, 2.5f, kSynodRedGlow);
+    DrawCircleV(tL, 2.8f, kScoutGlow);
+    DrawCircleV(tR, 2.8f, kScoutGlow);
     DrawCircleV(tL, 1.2f, WHITE);
     DrawCircleV(tR, 1.2f, WHITE);
 
-    /* Main Dagger Hull (Pointed forward towards tip at (0, 14)) */
+    /* Main Dagger Hull */
     Vector2 tip = RP(0, 14);
     Vector2 wingL = RP(-12, -7), wingR = RP(12, -7);
     Vector2 notch = RP(0, -3);
 
-    /* Left and right swept wings */
-    DrawTriangle(wingL, tip, notch, kSynodHullMid);
-    DrawTriangle(notch, tip, wingR, kSynodHullMid);
-    DrawTriangleLines(wingL, tip, notch, kSynodHullDark);
-    DrawTriangleLines(notch, tip, wingR, kSynodHullDark);
+    DrawTriangle(wingL, tip, notch, kHullMid);
+    DrawTriangle(notch, tip, wingR, kHullMid);
+    DrawTriangleLines(wingL, tip, notch, kHullDark);
+    DrawTriangleLines(notch, tip, wingR, kHullDark);
 
-    /* Crimson Leading Edge Plates */
-    DrawLineEx(wingL, tip, 2.2f, kSynodRed);
-    DrawLineEx(wingR, tip, 2.2f, kSynodRed);
+    /* Electric Cyan Leading Edge Plates */
+    DrawLineEx(wingL, tip, 2.2f, kScoutCyan);
+    DrawLineEx(wingR, tip, 2.2f, kScoutCyan);
 
-    /* Central Red Optical Sensor Visor (Glowing slit) */
+    /* Central Cyan Optical Sensor Visor */
     Vector2 eye1 = RP(-3.5f, 5), eye2 = RP(3.5f, 5);
-    DrawLineEx(eye1, eye2, 2.0f, kSynodRedGlow);
+    DrawLineEx(eye1, eye2, 2.0f, kScoutGlow);
     DrawPixelV(RP(0, 5), WHITE);
 
     #undef RP
 }
 
 static void DrawInterceptor(const Enemy *e) {
-    /* Synod "Jackal" Heavy Fighter — Twin-boom split fighter with dual cannons */
+    /* Synod "Jackal" Heavy Fighter — Imperial Crimson & Gold */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -382,92 +438,122 @@ static void DrawInterceptor(const Enemy *e) {
     /* Left and right weapon sponson booms */
     Vector2 boomL1 = RP(-12, -8), boomL2 = RP(-12, 12);
     Vector2 boomR1 = RP( 12, -8), boomR2 = RP( 12, 12);
-    DrawLineEx(boomL1, boomL2, 4.0f, kSynodHullDark);
-    DrawLineEx(boomR1, boomR2, 4.0f, kSynodHullDark);
-    /* Crimson blaster tips */
-    DrawCircleV(boomL2, 2.5f, kSynodRed);
-    DrawCircleV(boomR2, 2.5f, kSynodRed);
+    DrawLineEx(boomL1, boomL2, 4.0f, kHullDark);
+    DrawLineEx(boomR1, boomR2, 4.0f, kHullDark);
+    DrawCircleV(boomL2, 2.5f, kJackalRed);
+    DrawCircleV(boomR2, 2.5f, kJackalRed);
 
     /* Central Armored Fuselage */
     Vector2 body[4] = { RP(0, 14), RP(-8, -4), RP(0, -10), RP(8, -4) };
-    DrawTriangle(body[1], body[0], body[3], kSynodHullMid);
-    DrawTriangle(body[1], body[3], body[2], kSynodHullDark);
-    DrawTriangleLines(body[1], body[0], body[3], kSynodRedDark);
+    DrawTriangle(body[1], body[0], body[3], kHullMid);
+    DrawTriangle(body[1], body[3], body[2], kHullDark);
+    DrawTriangleLines(body[1], body[0], body[3], kJackalRed);
 
-    /* Connecting wing spars */
-    DrawLineEx(RP(-12, 0), RP(12, 0), 3.0f, kSynodHullLight);
+    /* Gold Ace Wing Spars */
+    DrawLineEx(RP(-12, 0), RP(12, 0), 3.0f, kJackalGold);
 
-    /* Hexagonal red cockpit sensor */
-    DrawCircleV(RP(0, 3), 3.8f, kSynodRedGlow);
+    /* Glowing cockpit sensor */
+    DrawCircleV(RP(0, 3), 3.8f, kJackalRed);
     DrawCircleV(RP(0, 3), 1.8f, WHITE);
 
     #undef RP
 }
 
 static void DrawTank(const Enemy *e) {
-    /* Synod "Bulwark" Ironclad — Heavy armored hexagonal fortress */
+    /* Synod "Bulwark" Ironclad — Gunmetal & Industrial Hazard Amber */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
-    /* Multi-plated heavy hexagonal hull */
+    /* Heavy hexagonal hull */
     Vector2 hex[6] = {
         RP(  0,  24), RP(-20,  12), RP(-20, -12),
         RP(  0, -24), RP( 20, -12), RP( 20,  12)
     };
     for (int t = 1; t < 5; t++) {
-        DrawTriangle(hex[0], hex[t], hex[t+1], kSynodHullMid);
-        DrawLineEx(hex[t], hex[t+1], 2.0f, kSynodHullLight);
+        DrawTriangle(hex[0], hex[t], hex[t+1], kHullMid);
+        DrawLineEx(hex[t], hex[t+1], 2.0f, kHullLight);
     }
-    DrawLineEx(hex[0], hex[1], 2.5f, kSynodRed);
-    DrawLineEx(hex[0], hex[5], 2.5f, kSynodRed);
+    DrawLineEx(hex[0], hex[1], 2.5f, kTankAmber);
+    DrawLineEx(hex[0], hex[5], 2.5f, kTankAmber);
 
     /* Heavy Reinforced Prow Armor Plate */
     Vector2 prow[3] = { RP(0, 24), RP(-12, 10), RP(12, 10) };
-    DrawTriangle(prow[0], prow[1], prow[2], kSynodHullDark);
-    DrawTriangleLines(prow[0], prow[1], prow[2], kSynodRed);
+    DrawTriangle(prow[0], prow[1], prow[2], kHullDark);
+    DrawTriangleLines(prow[0], prow[1], prow[2], kTankAmber);
 
-    /* Heavy Dual-Turret Turbolaser on Top */
+    /* Dual-Turret Turbolaser on Top */
     Vector2 turretPos = RP(0, 0);
-    DrawCircleV(turretPos, 9.0f, kSynodHullDark);
-    DrawCircleLinesV(turretPos, 9.0f, kSynodHullLight);
-    /* Twin heavy cannon barrels pointing forward */
-    DrawLineEx(RP(-4, 0), RP(-4, 16), 2.5f, kSynodHullLight);
-    DrawLineEx(RP( 4, 0), RP( 4, 16), 2.5f, kSynodHullLight);
-    DrawCircleV(turretPos, 4.0f, kSynodRed);
+    DrawCircleV(turretPos, 9.0f, kHullDark);
+    DrawCircleLinesV(turretPos, 9.0f, kHullLight);
+    DrawLineEx(RP(-4, 0), RP(-4, 16), 2.5f, kTankAmber);
+    DrawLineEx(RP( 4, 0), RP( 4, 16), 2.5f, kTankAmber);
+    DrawCircleV(turretPos, 4.0f, kTankGlow);
 
     #undef RP
 }
 
 static void DrawBomber(const Enemy *e) {
-    /* Synod "Goliath" Siege Platform — Heavy ordnance carrier with pulsing racks */
+    /* Synod "Goliath" Siege Platform — Deep Cobalt & Acid Plasma Emerald */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
     /* Heavy delta fuselage */
     Vector2 body[3] = { RP(0, 18), RP(-16, -14), RP(16, -14) };
-    DrawTriangle(body[0], body[1], body[2], kSynodHullMid);
-    DrawTriangleLines(body[0], body[1], body[2], kSynodHullDark);
+    DrawTriangle(body[0], body[1], body[2], (Color){ 30, 42, 65, 255 });
+    DrawTriangleLines(body[0], body[1], body[2], kHullDark);
 
-    /* Massive Port and Starboard Missile Launch Pods */
+    /* Missile Launch Pods */
     Vector2 podL[3] = { RP(-16, -14), RP(-30, 2), RP(-10, 2) };
     Vector2 podR[3] = { RP( 16, -14), RP( 10, 2), RP( 30, 2) };
-    DrawTriangle(podL[0], podL[1], podL[2], kSynodHullDark);
-    DrawTriangle(podR[0], podR[1], podR[2], kSynodHullDark);
-    DrawTriangleLines(podL[0], podL[1], podL[2], kSynodRedDark);
-    DrawTriangleLines(podR[0], podR[1], podR[2], kSynodRedDark);
+    DrawTriangle(podL[0], podL[1], podL[2], kBomberDark);
+    DrawTriangle(podR[0], podR[1], podR[2], kBomberDark);
+    DrawTriangleLines(podL[0], podL[1], podL[2], kBomberGreen);
+    DrawTriangleLines(podR[0], podR[1], podR[2], kBomberGreen);
 
-    /* Pulsing Ordnance Silo Bays */
+    /* Pulsing Acid Emerald Plasma Silos */
     float pulse = 0.5f + 0.5f * sinf(GetTime() * 8.0f);
-    Color bayCol = (Color){ 255, (unsigned char)(100 + pulse * 100), 20, 255 };
+    Color bayCol = (Color){ (unsigned char)(pulse * 60), 240, 160, 255 };
     DrawCircleV(RP(-18, -4), 4.5f, bayCol);
     DrawCircleV(RP( 18, -4), 4.5f, bayCol);
     DrawCircleV(RP(-18, -4), 2.0f, WHITE);
     DrawCircleV(RP( 18, -4), 2.0f, WHITE);
 
     /* Bridge Command Visor */
-    DrawLineEx(RP(-4, 8), RP(4, 8), 2.5f, kSynodRedGlow);
+    DrawLineEx(RP(-4, 8), RP(4, 8), 2.5f, kBomberGreen);
+
+    #undef RP
+}
+
+static void DrawCivilianShuttle(const Enemy *e) {
+    /* Colonial Evacuation Shuttle — White & Humanitarian Blue */
+    float rot = DEG2RAD(e->rotation);
+    float c = cosf(rot), s = sinf(rot);
+    #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
+
+    /* Main Transport Hull */
+    Vector2 nose   = RP(0, 16);
+    Vector2 port   = RP(-11, -12);
+    Vector2 stbd   = RP( 11, -12);
+    Vector2 stern  = RP(0, -10);
+
+    DrawTriangle(port, nose, stbd, (Color){ 245, 248, 255, 255 });
+    DrawTriangle(port, stbd, stern, (Color){ 210, 220, 235, 255 });
+    DrawTriangleLines(port, nose, stbd, (Color){ 80, 110, 150, 255 });
+
+    /* Blue Humanitarian Medical Ribbon */
+    DrawLineEx(RP(-7, -2), RP(7, -2), 3.0f, (Color){ 30, 130, 255, 255 });
+    DrawLineEx(RP(0, -6),  RP(0, 2),  3.0f, (Color){ 30, 130, 255, 255 });
+
+    /* Cockpit */
+    DrawCircleV(RP(0, 8), 3.0f, (Color){ 0, 210, 255, 230 });
+
+    /* Twin Escape Engines (Cyan flame) */
+    Vector2 engL = RP(-6, -13);
+    Vector2 engR = RP( 6, -13);
+    DrawCircleV(engL, 2.5f, (Color){ 0, 200, 255, 255 });
+    DrawCircleV(engR, 2.5f, (Color){ 0, 200, 255, 255 });
 
     #undef RP
 }
@@ -547,11 +633,12 @@ static void DrawBoss(const Enemy *e) {
 
 void DrawEnemy(const Enemy *e) {
     switch (e->type) {
-        case ENEMY_SCOUT:       DrawScout(e);       break;
-        case ENEMY_INTERCEPTOR: DrawInterceptor(e); break;
-        case ENEMY_TANK:        DrawTank(e);        break;
-        case ENEMY_BOMBER:      DrawBomber(e);      break;
-        case ENEMY_BOSS:        DrawBoss(e);        break;
+        case ENEMY_SCOUT:       DrawScout(e);           break;
+        case ENEMY_INTERCEPTOR: DrawInterceptor(e);     break;
+        case ENEMY_TANK:        DrawTank(e);            break;
+        case ENEMY_BOMBER:      DrawBomber(e);          break;
+        case ENEMY_BOSS:        DrawBoss(e);            break;
+        case CIVILIAN_SHUTTLE:  DrawCivilianShuttle(e); break;
         default: break;
     }
 

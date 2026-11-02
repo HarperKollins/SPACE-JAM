@@ -633,6 +633,96 @@ static void GenMusicBattle(const char *filename) {
     free(buf);
 }
 
+static void GenSfxRadioChirp(const char *filename) {
+    float dur = 0.16f;
+    uint32_t n = (uint32_t)(dur * SAMPLE_RATE);
+    int16_t *buf = (int16_t *)malloc(n * sizeof(int16_t));
+    if (!buf) return;
+    float phase = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float p = (float)i / (float)n;
+        float freq = (p < 0.5f) ? 1800.0f : 2400.0f;
+        phase += 2.0f * (float)PI * freq / SAMPLE_RATE;
+        float subT = (p < 0.5f) ? (p * 2.0f) : ((p - 0.5f) * 2.0f);
+        float sample = sinf(phase) * (1.0f - subT) * 0.85f;
+        buf[i] = (int16_t)(ClampFloat(sample, -1.0f, 1.0f) * 32767.0f);
+    }
+    SaveWavMono(filename, buf, n, SAMPLE_RATE);
+    free(buf);
+}
+
+static void GenSfxRadioStatic(const char *filename) {
+    float dur = 0.12f;
+    uint32_t n = (uint32_t)(dur * SAMPLE_RATE);
+    int16_t *buf = (int16_t *)malloc(n * sizeof(int16_t));
+    if (!buf) return;
+    float phase = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float p = (float)i / (float)n;
+        float noise = RndNoise();
+        phase += 2.0f * (float)PI * 180.0f / SAMPLE_RATE;
+        float sample = (noise * 0.75f + sinf(phase) * 0.25f) * (1.0f - p * 0.8f) * 0.75f;
+        buf[i] = (int16_t)(ClampFloat(sample, -1.0f, 1.0f) * 32767.0f);
+    }
+    SaveWavMono(filename, buf, n, SAMPLE_RATE);
+    free(buf);
+}
+
+static void GenSfxRadioBeep(const char *filename) {
+    float dur = 0.04f;
+    uint32_t n = (uint32_t)(dur * SAMPLE_RATE);
+    int16_t *buf = (int16_t *)malloc(n * sizeof(int16_t));
+    if (!buf) return;
+    float phase = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float p = (float)i / (float)n;
+        phase += 2.0f * (float)PI * 920.0f / SAMPLE_RATE;
+        float sample = sinf(phase) * expf(-p * 14.0f) * 0.70f;
+        buf[i] = (int16_t)(ClampFloat(sample, -1.0f, 1.0f) * 32767.0f);
+    }
+    SaveWavMono(filename, buf, n, SAMPLE_RATE);
+    free(buf);
+}
+
+static void GenSfxWarpJump(const char *filename) {
+    float dur = 1.10f;
+    uint32_t n = (uint32_t)(dur * SAMPLE_RATE);
+    int16_t *buf = (int16_t *)malloc(n * sizeof(int16_t));
+    if (!buf) return;
+    float phase = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float p = (float)i / (float)n;
+        float freq = (p < 0.6f) ? (140.0f + 1460.0f * (p / 0.6f) * (p / 0.6f)) : 90.0f;
+        phase += 2.0f * (float)PI * freq / SAMPLE_RATE;
+        float noise = RndNoise();
+        float env = (p < 0.6f) ? (p / 0.6f) : (1.0f - (p - 0.6f) / 0.4f);
+        float sample = (sinf(phase) * 0.65f + noise * 0.35f) * env * 0.90f;
+        buf[i] = (int16_t)(ClampFloat(sample, -1.0f, 1.0f) * 32767.0f);
+    }
+    SaveWavMono(filename, buf, n, SAMPLE_RATE);
+    free(buf);
+}
+
+static void GenSfxMedalAward(const char *filename) {
+    float dur = 0.75f;
+    uint32_t n = (uint32_t)(dur * SAMPLE_RATE);
+    int16_t *buf = (int16_t *)malloc(n * sizeof(int16_t));
+    if (!buf) return;
+    float phase = 0.0f;
+    float notes[4] = { 523.25f, 659.25f, 783.99f, 1046.50f };
+    for (uint32_t i = 0; i < n; i++) {
+        float p = (float)i / (float)n;
+        int idx = (int)(p * 4.0f);
+        if (idx > 3) idx = 3;
+        phase += 2.0f * (float)PI * notes[idx] / SAMPLE_RATE;
+        float subT = fmodf(p * 4.0f, 1.0f);
+        float sample = sinf(phase) * (1.0f - subT * 0.7f) * 0.85f;
+        buf[i] = (int16_t)(ClampFloat(sample, -1.0f, 1.0f) * 32767.0f);
+    }
+    SaveWavMono(filename, buf, n, SAMPLE_RATE);
+    free(buf);
+}
+
 int main(void) {
     printf("Synthesizing audio assets for SPACE JAM...\n");
 
@@ -648,6 +738,11 @@ int main(void) {
     GenSfxMenuSelect("assets/audio/menu_select.wav");
     GenSfxMenuConfirm("assets/audio/menu_confirm.wav");
     GenSfxGameOver("assets/audio/game_over.wav");
+    GenSfxRadioChirp("assets/audio/radio_chirp.wav");
+    GenSfxRadioStatic("assets/audio/radio_static.wav");
+    GenSfxRadioBeep("assets/audio/radio_beep.wav");
+    GenSfxWarpJump("assets/audio/warp_jump.wav");
+    GenSfxMedalAward("assets/audio/medal_award.wav");
 
     /* Music */
     GenMusicIntro("assets/audio/music_intro.wav");

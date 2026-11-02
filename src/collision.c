@@ -34,7 +34,7 @@ int Collision_Update(
 
         for (int ei = 0; ei < MAX_ENEMIES; ei++) {
             Enemy *e = &enemies->enemies[ei];
-            if (!e->active || e->state == ESTATE_DYING) continue;
+            if (!e->active || e->state == ESTATE_DYING || e->type == CIVILIAN_SHUTTLE) continue;
 
             if (CheckCircleCircle(b->pos, b->radius, e->pos, e->radius)) {
                 Projectiles_KillPlayer(projectiles, bi);
@@ -147,7 +147,7 @@ int Collision_Update(
     if (Player_IsAlive(player)) {
         for (int ei = 0; ei < MAX_ENEMIES; ei++) {
             Enemy *e = &enemies->enemies[ei];
-            if (!e->active || e->state == ESTATE_DYING) continue;
+            if (!e->active || e->state == ESTATE_DYING || e->type == CIVILIAN_SHUTTLE) continue;
 
             if (CheckCircleCircle(player->pos, PLAYER_RADIUS + 4.0f, e->pos, e->radius + 4.0f)) {
                 Vector2 diff = Vec2Sub(e->pos, player->pos);
@@ -229,26 +229,26 @@ int Collision_Update(
             Audio_PlaySFX(audio, SFX_ENEMY_SHOOT);
 
             if (e->type == ENEMY_SCOUT) {
-                /* Red pulse blaster — fair dogfight velocity */
+                /* Cyan needle pulse blaster — swift and precise */
                 Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 230.0f, 4.0f,
-                                        8, (Color){ 255, 60, 60, 255 });
+                                        8, (Color){ 0, 230, 220, 255 });
             } else if (e->type == ENEMY_INTERCEPTOR) {
-                /* Twin red plasma cannons — staggered aim angle */
+                /* Twin crimson plasma cannons — staggered aim angle */
                 float baseAngle = RAD2DEG(atan2f(dir.x, -dir.y));
                 Vector2 d1 = AngleToDir(baseAngle - 7.0f);
                 Vector2 d2 = AngleToDir(baseAngle + 7.0f);
                 Projectile_SpawnEnemyEx(projectiles, e->pos, d1, 220.0f, 4.5f,
-                                        9, (Color){ 255, 40, 50, 255 });
+                                        9, (Color){ 255, 45, 65, 255 });
                 Projectile_SpawnEnemyEx(projectiles, e->pos, d2, 220.0f, 4.5f,
-                                        9, (Color){ 255, 40, 50, 255 });
+                                        9, (Color){ 255, 45, 65, 255 });
             } else if (e->type == ENEMY_TANK) {
-                /* Heavy turbolaser shell: deliberate, punchy red energy bolt */
+                /* Heavy hazard amber flak shell: high-caliber explosive round */
                 Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 190.0f, 7.0f,
-                                        16, (Color){ 255, 90, 20, 255 });
+                                        16, (Color){ 255, 175, 20, 255 });
             } else if (e->type == ENEMY_BOMBER) {
-                /* Long-range plasma torpedo: slow moving heavy projectile */
+                /* Long-range acid-violet plasma torpedo */
                 Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 170.0f, 6.5f,
-                                        14, (Color){ 255, 140, 20, 255 });
+                                        14, (Color){ 180, 40, 255, 255 });
             } else if (e->type == ENEMY_BOSS) {
                 if (e->bossPhase == 2) {
                     /* Phase 2: spread barrage (5 bullets) */
@@ -264,7 +264,7 @@ int Collision_Update(
                         float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 16.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
                         Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 230.0f, 5.0f,
-                                                12, (Color){ 220, 30, 60, 255 });
+                                                12, (Color){ 0, 230, 160, 255 });
                     }
                 }
             }

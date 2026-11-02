@@ -15,6 +15,7 @@
 #include "audio.h"
 #include "highscore.h"
 #include "settings.h"
+#include "progress.h"
 #include "utils.h"
 #include "config.h"
 #include "raylib.h"
@@ -33,12 +34,15 @@ static PowerupPool    g_powerups;
 static MenuState      g_menu;
 static AudioManager   g_audio;
 static HighScoreTable g_scores;
+static PlayerProgress g_prog;
 
 /* Wave spawn state */
 static float g_enemySpawnTimer  = 0.0f;
 static float g_enemySpawnInterval = 3.5f;
 static int   g_waveTotalEnemies  = 0;
 static int   g_waveSpawnedCount  = 0;
+static float g_shuttleSpawnTimer = 6.0f;
+static float g_boostHoldTimer    = 0.0f;
 
 /* Screen shake */
 static float g_shakeX = 0.0f;
@@ -68,7 +72,9 @@ void Game_Init(GameContext *ctx) {
     Menu_Init(&g_menu);
 
     HighScore_Load(&g_scores);
+    Progress_Init(&g_prog);
     ctx->highScore = HighScore_GetTop(&g_scores);
+    if (g_prog.highestScore > ctx->highScore) ctx->highScore = g_prog.highestScore;
 
     Audio_Init(&g_audio,
                ctx->settings.masterVolume,
@@ -96,7 +102,8 @@ void Game_ChangeState(GameContext *ctx, GameState next) {
     g_menu.selectedItem = 0;
 
     if (next == STATE_MAIN_MENU || next == STATE_PROLOGUE ||
-        next == STATE_SETTINGS  || next == STATE_CONTROLS) {
+        next == STATE_COMMS     || next == STATE_SETTINGS  ||
+        next == STATE_CONTROLS  || next == STATE_MEDALS) {
         Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_INTRO);
     } else if (next == STATE_PLAYING || next == STATE_PAUSED) {
         Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_BATTLE);
@@ -138,6 +145,8 @@ void Game_StartNewGame(GameContext *ctx) {
     g_enemySpawnInterval = 3.5f;
     g_waveTotalEnemies   = 0;
     g_waveSpawnedCount   = 0;
+    g_shuttleSpawnTimer  = 6.0f;
+    g_boostHoldTimer     = 0.0f;
 
     /* Controls hint overlay */
     g_hintTimer   = 8.0f;
@@ -151,17 +160,35 @@ void Game_NextWave(GameContext *ctx) {
     ctx->wave++;
     ctx->waveEnemiesKilled  = 0;
 
+    int sectorIdx = (ctx->wave <= 3) ? 0 : (ctx->wave <= 6) ? 1 : (ctx->wave <= 9) ? 2 : 3;
+    WorldSector newSector = (WorldSector)sectorIdx;
+
+    /* Hyperspace warp jump transition upon entering a new sector */
+    if (g_stars.sector != newSector || ctx->wave == 1) {
+        Starfield_SetSector(&g_stars, newSector, 1);
+        Audio_PlaySFX(&g_audio, SFX_WARP_JUMP);
+    }
+
+    /* Ship Evolution tier based on sector reached */
+    Player_SetShipTier(&g_player, (ShipTier)sectorIdx);
+
+    /* Update career progress record */
+    if (ctx->wave > g_prog.maxWaveReached) g_prog.maxWaveReached = ctx->wave;
+    if (sectorIdx + 1 > g_prog.maxSectorReached) g_prog.maxSectorReached = sectorIdx + 1;
+    Progress_Save(&g_prog);
+
     /* Scale difficulty */
     int baseCount = 5 + (ctx->wave - 1) * 3;
     g_waveTotalEnemies     = baseCount;
     g_waveSpawnedCount     = 0;
     ctx->waveEnemiesRequired = baseCount;
-    g_enemySpawnInterval   = MAX(0.8f, 3.5f - (float)(ctx->wave - 1) * 0.2f);
+    g_enemySpawnInterval   = MAX(0.8f, 3.2f - (float)(ctx->wave - 1) * 0.18f);
     g_enemySpawnTimer      = 0.5f;
 
-    ctx->bossActive = (ctx->wave % BOSS_WAVE_INTERVAL == 0);
+    /* Climax Boss encounter every 3 waves (Sector Bosses!) */
+    ctx->bossActive = (ctx->wave % 3 == 0);
     if (ctx->bossActive) {
-        Enemy_SpawnBoss(&g_enemies, GetScreenWidth(), GetScreenHeight());
+        Enemy_SpawnSectorBoss(&g_enemies, sectorIdx, GetScreenWidth(), GetScreenHeight());
         Audio_PlaySFX(&g_audio, SFX_BOSS_APPEAR);
         g_waveTotalEnemies   += 1;
         ctx->waveEnemiesRequired += 1;
@@ -230,6 +257,16 @@ void Game_Update(GameContext *ctx, float dt) {
         /* ─ Story Prologue Crawl ─ */
         case STATE_PROLOGUE:
             Menu_UpdatePrologue(&g_menu, ctx, dt);
+            break;
+
+        /* ─ Tactical Comms Cutscene ─ */
+        case STATE_COMMS:
+            Menu_UpdateComms(&g_menu, ctx, dt);
+            break;
+
+        /* ─ Service Record / Medals ─ */
+        case STATE_MEDALS:
+            Menu_UpdateMedals(&g_menu, ctx, dt);
             break;
 
         /* ─ Playing ─ */
@@ -318,6 +355,10 @@ void Game_Update(GameContext *ctx, float dt) {
                                        g_player.pos.y - fwd.y * 14.0f };
 
                 if (g_player.isBoosting) {
+                    g_boostHoldTimer += dt;
+                    if (g_boostHoldTimer >= 10.0f) {
+                        Progress_UnlockMedal(&g_prog, MEDAL_HYPER_NITRO);
+                    }
                     /* Hyper-Nitro Boost: Intense double exhaust plume & nitro sparks */
                     for (int i = 0; i < EXHAUST_PARTICLES_PER_FRAME * 2; i++) {
                         Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
@@ -328,18 +369,30 @@ void Game_Update(GameContext *ctx, float dt) {
                     }
                     /* Subtle cockpit throttle rumble */
                     ctx->screenShake = CLAMP(ctx->screenShake + 0.18f, 0.0f, 1.8f);
-                } else if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
-                    /* Standard forward thrust */
-                    for (int i = 0; i < EXHAUST_PARTICLES_PER_FRAME; i++) {
-                        Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
-                                               (Color){ 40, 160, 255, 200 });
-                    }
                 } else {
-                    /* Idle engine flex: occasional trailing ion shimmer */
-                    if (RandChance(0.20f)) {
-                        Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
-                                               (Color){ 0, 180, 255, 110 });
+                    g_boostHoldTimer = 0.0f;
+                    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
+                        /* Standard forward thrust */
+                        for (int i = 0; i < EXHAUST_PARTICLES_PER_FRAME; i++) {
+                            Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
+                                                   (Color){ 40, 160, 255, 200 });
+                        }
+                    } else {
+                        /* Idle engine flex: occasional trailing ion shimmer */
+                        if (RandChance(0.20f)) {
+                            Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
+                                                   (Color){ 0, 180, 255, 110 });
+                        }
                     }
+                }
+            }
+
+            /* Sector 1: Civilian Refugee Shuttle Evacuation Spawning */
+            if (g_stars.sector == SECTOR_TERRA_NOVUS && !ctx->bossActive && ctx->wave <= 3) {
+                g_shuttleSpawnTimer -= dt;
+                if (g_shuttleSpawnTimer <= 0.0f) {
+                    g_shuttleSpawnTimer = 12.0f;
+                    Enemy_SpawnShuttle(&g_enemies, sw, sh);
                 }
             }
 
@@ -358,6 +411,25 @@ void Game_Update(GameContext *ctx, float dt) {
             /* Enemy update */
             Enemies_Update(&g_enemies, g_player.pos, dt, sw, sh);
 
+            /* Check civilian shuttle rescue escape */
+            for (int ei = 0; ei < MAX_ENEMIES; ei++) {
+                Enemy *e = &g_enemies.enemies[ei];
+                if (e->active && e->state != ESTATE_DYING && e->type == CIVILIAN_SHUTTLE) {
+                    if (e->pos.x > (float)sw + 30.0f) {
+                        e->active = 0;
+                        g_enemies.count--;
+                        g_prog.totalShuttlesSaved++;
+                        Game_AddScore(ctx, 500);
+                        Particles_SpawnSparks(&g_particles, (Vector2){ (float)(sw - 20), e->pos.y }, 16, (Color){ 0, 255, 200, 255 });
+                        Audio_PlaySFX(&g_audio, SFX_MEDAL_AWARD);
+                        if (g_prog.totalShuttlesSaved >= 5) {
+                            Progress_UnlockMedal(&g_prog, MEDAL_SAVIOR_OF_TERRA);
+                        }
+                        Progress_Save(&g_prog);
+                    }
+                }
+            }
+
             /* Asteroid update */
             Asteroids_Update(&g_asteroids, dt, sw, sh, ctx->wave);
 
@@ -370,9 +442,25 @@ void Game_Update(GameContext *ctx, float dt) {
             /* Powerup update */
             Powerups_Update(&g_powerups, dt);
 
+            /* Track kill count for medals */
+            int killsBefore = ctx->waveEnemiesKilled;
+
             /* Collision detection */
             Collision_Update(&g_player, &g_enemies, &g_asteroids,
                              &g_projectiles, &g_powerups, &g_particles, ctx, &g_audio);
+
+            if (ctx->waveEnemiesKilled > killsBefore) {
+                int deltaKills = ctx->waveEnemiesKilled - killsBefore;
+                g_prog.totalKills += deltaKills;
+            }
+
+            /* Score & Boost medals */
+            if (ctx->score >= 10000) {
+                Progress_UnlockMedal(&g_prog, MEDAL_DEADEYE);
+            }
+            if (g_prog.awardPopupTimer > 0.0f) {
+                g_prog.awardPopupTimer -= dt;
+            }
 
             /* Check wave completion */
             if (ctx->waveEnemiesKilled >= ctx->waveEnemiesRequired
@@ -389,6 +477,22 @@ void Game_Update(GameContext *ctx, float dt) {
                 /* Trigger wave clear timer so game advances past boss */
                 ctx->waveEnemiesKilled = ctx->waveEnemiesRequired;
                 ctx->waveClearTimer = 0.0f;
+
+                g_prog.totalBossesDefeated++;
+                if (ctx->wave == 3) {
+                    Progress_UnlockMedal(&g_prog, MEDAL_SAVIOR_OF_TERRA);
+                } else if (ctx->wave == 6) {
+                    Progress_UnlockMedal(&g_prog, MEDAL_SOLAR_ACE);
+                } else if (ctx->wave == 9) {
+                    Progress_UnlockMedal(&g_prog, MEDAL_ICE_MARKSMAN);
+                } else if (ctx->wave >= 12) {
+                    Progress_UnlockMedal(&g_prog, MEDAL_CITADEL_SLAYER);
+                }
+                if (g_player.health < 25) {
+                    Progress_UnlockMedal(&g_prog, MEDAL_IRON_WILL);
+                }
+                Audio_PlaySFX(&g_audio, SFX_MEDAL_AWARD);
+                Progress_Save(&g_prog);
             }
 
             /* Player death */
@@ -404,6 +508,10 @@ void Game_Update(GameContext *ctx, float dt) {
                     HighScore_Insert(&g_scores, ctx->score, ctx->wave, "ACE");
                     HighScore_Save(&g_scores);
                     ctx->highScore = HighScore_GetTop(&g_scores);
+                    if (ctx->score > g_prog.highestScore) g_prog.highestScore = ctx->score;
+                    if (ctx->wave > g_prog.maxWaveReached) g_prog.maxWaveReached = ctx->wave;
+                    if ((int)g_stars.sector + 1 > g_prog.maxSectorReached) g_prog.maxSectorReached = (int)g_stars.sector + 1;
+                    Progress_Save(&g_prog);
                     Audio_PlaySFX(&g_audio, SFX_GAME_OVER);
                     Game_ChangeState(ctx, STATE_GAME_OVER);
                 }
@@ -483,6 +591,7 @@ void Game_Draw(GameContext *ctx) {
         EndMode2D();
 
         HUD_Draw(ctx, &g_player, &g_enemies, sw, sh);
+        HUD_DrawMedalPopup(g_prog.newlyUnlocked, g_prog.awardPopupTimer, sw);
 
         if (ctx->state == STATE_PAUSED) {
             Menu_DrawPause(&g_menu, sw, sh);
@@ -493,52 +602,61 @@ void Game_Draw(GameContext *ctx) {
         static int   lastAnnouncedWave = 0;
         if (lastAnnouncedWave != ctx->wave) {
             lastAnnouncedWave = ctx->wave;
-            waveAnnounceTimer = 3.6f;
+            waveAnnounceTimer = 3.8f;
         }
         if (waveAnnounceTimer > 0.0f) {
             waveAnnounceTimer -= GetFrameTime();
             float alpha = CLAMP(waveAnnounceTimer * 1.2f, 0.0f, 1.0f);
             unsigned char a = (unsigned char)(alpha * 255);
 
-            int bossWave = (ctx->wave % BOSS_WAVE_INTERVAL == 0);
-            const char *sectorName = (ctx->wave <= 4) ? "SECTOR 1 // THE SHROUDED FRONTIER" :
-                                     (ctx->wave == 5) ? "FLEET ALERT // DREADNOUGHT INTERCEPTION" :
-                                     (ctx->wave <= 9) ? "SECTOR 2 // THE ORBITAL GRAVEYARD" :
-                                                        "SECTOR 3 // SYNOD CITADEL REACH";
+            int bossWave = (ctx->wave % 3 == 0);
+            const char *sectorName = Starfield_GetSectorName(g_stars.sector);
+            const char *sectorSub  = Starfield_GetSectorSubtitle(g_stars.sector);
 
             /* Tactical Comms Message */
             const char *commsMsg =
-                (ctx->wave == 1) ? "[FLEET HQ]: Pilot Kollins, Synod Dagger interceptors detected. Clear the airspace, Ace!" :
-                (ctx->wave == 2) ? "[FLEET HQ]: Good kills. High-speed strike echelon detected on radar." :
-                (ctx->wave == 3) ? "[FLEET HQ]: Watch your flanks! Synod Jackal heavy fighters closing in." :
-                (ctx->wave == 4) ? "[FLEET HQ]: Ordnance alert! Avoid Goliath plasma torpedo barrages." :
-                (ctx->wave == 5) ? "[EMERGENCY]: Synod Dreadnought 'Vindicator' dropping out of warp! Target the bridge!" :
-                (ctx->wave == 6) ? "[FLEET HQ]: Blockade shattered! You've entered the graveyard of the 4th Fleet." :
-                (ctx->wave == 7) ? "[FLEET HQ]: Heavy Bulwark ironclads deploying composite shields. Keep moving!" :
-                (ctx->wave == 8) ? "[FLEET HQ]: Refugee convoy nearing hyperspace buoy! Hold the line, Ace!" :
-                (ctx->wave == 9) ? "[FLEET HQ]: Heavy siege wave incoming. Collect weapon power-ups and fire at will!" :
-                                   "[FLEET HQ]: Imperial fortress flagship detected. Bring her down for the Free Colonies!";
+                (ctx->wave == 1) ? "[FLEET HQ]: Pilot Harper! Iron Synod fleet has breached Terra Novus! Escort refugee shuttles!" :
+                (ctx->wave == 2) ? "[FLEET HQ]: Good shooting, Ace! More civilian transport ships launching from burning cities!" :
+                (ctx->wave == 3) ? "[EMERGENCY]: Synod Cruiser 'Terror of Terra' detected! Destroy Commander Varek's ship!" :
+                (ctx->wave == 4) ? "[FLEET HQ]: Sector 2: The Solar Corona. Blazing sun flares masking Synod strike wings!" :
+                (ctx->wave == 5) ? "[FLEET HQ]: Solar radiation critical! Collect weapon power-ups and punch through!" :
+                (ctx->wave == 6) ? "[ALERT]: Inquisitor Malakor's Solar Siege Platform engaging! Focus fire on reactor!" :
+                (ctx->wave == 7) ? "[FLEET HQ]: Sector 3: Ice Rings of Xylos. Emerald gas giant ahead. Watch the crystal fields!" :
+                (ctx->wave == 8) ? "[FLEET HQ]: Enemy stealth corvettes moving through the rings. Keep active scans up!" :
+                (ctx->wave == 9) ? "[ALERT]: High Admiral Zephyr's flagship 'Frostbite' engaging! Break through the blockade!" :
+                (ctx->wave == 10) ? "[FLEET HQ]: Sector 4: Synod Citadel! We are at the heart of the Imperial stronghold!" :
+                (ctx->wave == 11) ? "[FLEET HQ]: Heavy fortress cannons online. All Colony wings support Vanguard-1!" :
+                (ctx->wave == 12) ? "[FINAL MISSION]: The Iron Archon has engaged! Destroy the Imperial Citadel Flagship!" :
+                                   "[FLEET HQ]: Citadel defenses neutralized! Victory for the Free Colonies!";
 
             /* 1. Sector & Wave Center Banner */
             int stw = MeasureText(sectorName, 18);
             Color secCol = bossWave ? (Color){ 255, 60, 60, a } : (Color){ 0, 220, 255, a };
-            DrawText(sectorName, sw / 2 - stw / 2, sh / 2 - 76, 18, secCol);
+            DrawText(sectorName, sw / 2 - stw / 2, sh / 2 - 82, 18, secCol);
 
-            char wbuf[32];
-            snprintf(wbuf, sizeof(wbuf), bossWave ? "!! BOSS ENCOUNTER !!" : "WAVE %d", ctx->wave);
-            int tw = MeasureText(wbuf, 44);
+            int subw = MeasureText(sectorSub, 13);
+            DrawText(sectorSub, sw / 2 - subw / 2, sh / 2 - 60, 13, (Color){ 180, 210, 240, a });
+
+            char wbuf[64];
+            if (bossWave) {
+                int sector = (ctx->wave <= 3) ? 0 : (ctx->wave <= 6) ? 1 : (ctx->wave <= 9) ? 2 : 3;
+                snprintf(wbuf, sizeof(wbuf), "!! BOSS: %s !!", Enemy_GetBossName(sector));
+            } else {
+                snprintf(wbuf, sizeof(wbuf), "WAVE %d", ctx->wave);
+            }
+            int tw = MeasureText(wbuf, bossWave ? 24 : 44);
             Color wc = bossWave ? (Color){ 255, 80, 80, a } : (Color){ 255, 215, 0, a };
-            DrawText(wbuf, sw / 2 - tw / 2, sh / 2 - 46, 44, wc);
+            DrawText(wbuf, sw / 2 - tw / 2, sh / 2 - 38, bossWave ? 24 : 44, wc);
 
             /* 2. Tactical Comms Box at Bottom */
-            int cboxW = MIN(740, sw - 80);
-            int cboxH = 50;
+            int cboxW = MIN(760, sw - 80);
+            int cboxH = 52;
             int cboxX = sw / 2 - cboxW / 2;
             int cboxY = sh - 100;
             DrawRectangleRounded((Rectangle){ (float)cboxX, (float)cboxY, (float)cboxW, (float)cboxH },
-                                 0.15f, 6, (Color){ 4, 8, 20, (unsigned char)(alpha * 210) });
+                                 0.15f, 6, (Color){ 4, 8, 20, (unsigned char)(alpha * 215) });
             DrawRectangleRoundedLines((Rectangle){ (float)cboxX, (float)cboxY, (float)cboxW, (float)cboxH },
-                                      0.15f, 6, (Color){ 0, 180, 255, (unsigned char)(alpha * 160) });
+                                      0.15f, 6, (Color){ 0, 180, 255, (unsigned char)(alpha * 170) });
             DrawText("TACTICAL COMMS // FREQ 104.8 MHZ", cboxX + 16, cboxY + 8, 11,
                      (Color){ 0, 255, 180, a });
             DrawText(commsMsg, cboxX + 16, cboxY + 24, 14,
@@ -576,6 +694,10 @@ void Game_Draw(GameContext *ctx) {
             Menu_DrawMain(&g_menu, ctx, sw, sh); break;
         case STATE_PROLOGUE:
             Menu_DrawPrologue(&g_menu, sw, sh); break;
+        case STATE_COMMS:
+            Menu_DrawComms(&g_menu, sw, sh); break;
+        case STATE_MEDALS:
+            Menu_DrawMedals(&g_menu, &g_prog, sw, sh); break;
         case STATE_GAME_OVER:
             Menu_DrawGameOver(&g_menu, ctx, sw, sh); break;
         case STATE_SETTINGS:

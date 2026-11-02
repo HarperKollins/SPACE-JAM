@@ -82,7 +82,7 @@ void Menu_Init(MenuState *ms) {
    MAIN MENU
 ══════════════════════════════════════════════════════ */
 
-static const char *kMainItems[] = { "START MISSION", "QUICK BATTLE", "CONTROLS", "SETTINGS", "EXIT" };
+static const char *kMainItems[] = { "START MISSION", "SERVICE RECORD", "CONTROLS", "SETTINGS", "EXIT" };
 static const int   kMainCount   = 5;
 
 void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
@@ -101,7 +101,7 @@ void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
         Game_PlaySFX(SFX_MENU_CONFIRM);
         switch (ms->selectedItem) {
             case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
-            case 1: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
+            case 1: Game_ChangeState(ctx, STATE_MEDALS); break;
             case 2: Game_ChangeState(ctx, STATE_CONTROLS); break;
             case 3: Game_ChangeState(ctx, STATE_SETTINGS); break;
             case 4: ctx->running = 0; break;
@@ -123,7 +123,7 @@ void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
                 Game_PlaySFX(SFX_MENU_CONFIRM);
                 switch (i) {
                     case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
-                    case 1: Game_StartNewGame(ctx); Game_ChangeState(ctx, STATE_PLAYING); break;
+                    case 1: Game_ChangeState(ctx, STATE_MEDALS); break;
                     case 2: Game_ChangeState(ctx, STATE_CONTROLS); break;
                     case 3: Game_ChangeState(ctx, STATE_SETTINGS); break;
                     case 4: ctx->running = 0; break;
@@ -611,23 +611,22 @@ void Menu_StartPrologue(MenuState *ms) {
 void Menu_UpdatePrologue(MenuState *ms, GameContext *ctx, float dt) {
     ms->prologueScroll += dt * 36.0f; /* Smooth, readable scroll */
 
-    /* Skip on any key or click */
+    /* Skip on any key or click -> transition to tactical comms transmission */
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
         IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        Game_PlaySFX(SFX_MENU_CONFIRM);
-        Game_StartNewGame(ctx);
-        Game_ChangeState(ctx, STATE_PLAYING);
+        Menu_StartComms(ms);
+        Game_ChangeState(ctx, STATE_COMMS);
         return;
     }
 
-    /* Auto-launch once crawl finishes */
+    /* Auto-launch comms once crawl finishes */
     float totalHeight = 0.0f;
     for (size_t i = 0; i < CRAWL_LINE_COUNT; i++) {
         totalHeight += (float)kCrawl[i].fontSize + (float)kCrawl[i].spacingAfter;
     }
     if (ms->prologueScroll > totalHeight + (float)GetScreenHeight() * 0.7f) {
-        Game_StartNewGame(ctx);
-        Game_ChangeState(ctx, STATE_PLAYING);
+        Menu_StartComms(ms);
+        Game_ChangeState(ctx, STATE_COMMS);
     }
 }
 
@@ -664,4 +663,315 @@ void Menu_DrawPrologue(const MenuState *ms, int screenW, int screenH) {
     int pw = MeasureText(prompt, 14);
     DrawText(prompt, screenW / 2 - pw / 2, screenH - 32, 14,
              (Color){ 0, 220, 255, (unsigned char)(140 + pulse * 115) });
+}
+
+/* ══════════════════════════════════════════════════════
+   TACTICAL RADIO COMMUNICATIONS CUTSCENE
+══════════════════════════════════════════════════════ */
+
+typedef struct {
+    const char *speaker;
+    const char *callsign;
+    const char *text;
+    int         isPlayer;
+} CommsDialogue;
+
+static const CommsDialogue kCommsDialogue[] = {
+    { "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
+      "Vanguard-1, do you copy? Harper, do you read me?", 0 },
+
+    { "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "Loud and clear, Command. Atmospheric descent complete. What is the tactical situation?", 1 },
+
+    { "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
+      "It is a catastrophic breach! The Iron Synod has broken our orbital grid. Terra Novus is in flames.", 0 },
+
+    { "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
+      "Civilian evacuation shuttles are scrambling for orbit! Synod hunter wings have them pinned down. You are their only escort! Protect the fleet, Ace!", 0 },
+
+    { "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "Weapons hot. Twin wingtip autocannons primed. No Imperial warship touches those shuttles. Engaging now!", 1 },
+};
+#define COMMS_TOTAL_LINES 5
+
+void Menu_StartComms(MenuState *ms) {
+    ms->comms.currentLine   = 0;
+    ms->comms.charTimer     = 0.0f;
+    ms->comms.charsRevealed = 0;
+    ms->comms.beepTimer     = 0.0f;
+    ms->comms.freqAnim      = 0.0f;
+    Game_PlaySFX(SFX_RADIO_CHIRP);
+    Game_PlaySFX(SFX_RADIO_STATIC);
+}
+
+void Menu_UpdateComms(MenuState *ms, GameContext *ctx, float dt) {
+    ms->comms.freqAnim += dt * 8.0f;
+
+    if (ms->comms.currentLine >= COMMS_TOTAL_LINES) {
+        Game_PlaySFX(SFX_WARP_JUMP);
+        Game_StartNewGame(ctx);
+        Game_ChangeState(ctx, STATE_PLAYING);
+        return;
+    }
+
+    const CommsDialogue *cd = &kCommsDialogue[ms->comms.currentLine];
+    int textLen = (int)strlen(cd->text);
+
+    /* Typewriter text advance */
+    if (ms->comms.charsRevealed < textLen) {
+        ms->comms.charTimer += dt;
+        while (ms->comms.charTimer >= 0.022f && ms->comms.charsRevealed < textLen) {
+            ms->comms.charTimer -= 0.022f;
+            ms->comms.charsRevealed++;
+            if (ms->comms.charsRevealed % 3 == 0) {
+                Game_PlaySFX(SFX_RADIO_BEEP);
+            }
+        }
+    }
+
+    /* Input: advance dialogue */
+    if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (ms->comms.charsRevealed < textLen) {
+            /* Reveal whole line immediately */
+            ms->comms.charsRevealed = textLen;
+        } else {
+            /* Advance to next dialogue line */
+            ms->comms.currentLine++;
+            ms->comms.charsRevealed = 0;
+            ms->comms.charTimer     = 0.0f;
+            if (ms->comms.currentLine < COMMS_TOTAL_LINES) {
+                Game_PlaySFX(SFX_RADIO_CHIRP);
+            } else {
+                Game_PlaySFX(SFX_WARP_JUMP);
+                Game_StartNewGame(ctx);
+                Game_ChangeState(ctx, STATE_PLAYING);
+            }
+        }
+    }
+
+    /* ESC: skip directly to gameplay */
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        Game_PlaySFX(SFX_WARP_JUMP);
+        Game_StartNewGame(ctx);
+        Game_ChangeState(ctx, STATE_PLAYING);
+    }
+}
+
+void Menu_DrawComms(const MenuState *ms, int screenW, int screenH) {
+    /* Dim overlay */
+    DrawRectangle(0, 0, screenW, screenH, (Color){ 2, 4, 14, 220 });
+
+    if (ms->comms.currentLine >= COMMS_TOTAL_LINES) return;
+    const CommsDialogue *cd = &kCommsDialogue[ms->comms.currentLine];
+
+    /* 1. Header Bar: Frequency & Security Clearance */
+    int topY = (int)((float)screenH * 0.08f);
+    DrawRectangle(0, topY - 14, screenW, 36, (Color){ 4, 12, 28, 220 });
+    DrawLine(0, topY + 22, screenW, topY + 22, (Color){ 0, 180, 255, 140 });
+
+    const char *headerTitle = "TACTICAL COMMS // MILITARY FREQUENCY 104.8 MHz // [ QUANTUM ENCRYPTED ]";
+    int htw = MeasureText(headerTitle, 14);
+    DrawText(headerTitle, screenW / 2 - htw / 2, topY - 5, 14, (Color){ 0, 240, 200, 255 });
+
+    /* 2. Speaker Portrait Panels (Commander Vance on Left, Harper on Right) */
+    int panW = 280, panH = 170;
+    int panY = (int)((float)screenH * 0.18f);
+    int leftX = (int)((float)screenW * 0.12f);
+    int rightX = screenW - leftX - panW;
+
+    /* Left Panel: Vance */
+    int vanceActive = (cd->isPlayer == 0);
+    Color vanceBorder = vanceActive ? (Color){ 0, 220, 255, 255 } : (Color){ 60, 80, 110, 140 };
+    DrawRectangleRounded((Rectangle){ (float)leftX, (float)panY, (float)panW, (float)panH }, 0.08f, 6,
+                         (Color){ 6, 12, 28, 230 });
+    DrawRectangleRoundedLines((Rectangle){ (float)leftX, (float)panY, (float)panW, (float)panH }, 0.08f, 6, vanceBorder);
+    DrawText("COMMANDER VANCE", leftX + 16, panY + 14, 15, vanceActive ? (Color){ 0, 220, 255, 255 } : (Color){ 140, 160, 180, 180 });
+    DrawText("FLEET HQ // SECTOR 1", leftX + 16, panY + 34, 11, (Color){ 100, 150, 200, 180 });
+
+    /* Oscillating Waveform for Vance */
+    for (int w = 0; w < 32; w++) {
+        float h = vanceActive ? fabsf(sinf(ms->comms.freqAnim + (float)w * 0.45f)) * 28.0f + 4.0f : 4.0f;
+        int wx = leftX + 24 + w * 7;
+        DrawLine(wx, panY + 110 - (int)(h * 0.5f), wx, panY + 110 + (int)(h * 0.5f),
+                 vanceActive ? (Color){ 0, 240, 255, 220 } : (Color){ 40, 70, 100, 140 });
+    }
+
+    /* Right Panel: Harper Kollins */
+    int harperActive = (cd->isPlayer == 1);
+    Color harperBorder = harperActive ? (Color){ 255, 200, 40, 255 } : (Color){ 60, 80, 110, 140 };
+    DrawRectangleRounded((Rectangle){ (float)rightX, (float)panY, (float)panW, (float)panH }, 0.08f, 6,
+                         (Color){ 6, 12, 28, 230 });
+    DrawRectangleRoundedLines((Rectangle){ (float)rightX, (float)panY, (float)panW, (float)panH }, 0.08f, 6, harperBorder);
+    DrawText("HARPER KOLLINS", rightX + 16, panY + 14, 15, harperActive ? (Color){ 255, 200, 40, 255 } : (Color){ 140, 160, 180, 180 });
+    DrawText("PILOT // CALL-SIGN: VANGUARD-1", rightX + 16, panY + 34, 11, (Color){ 200, 180, 100, 180 });
+
+    /* Oscillating Waveform for Harper */
+    for (int w = 0; w < 32; w++) {
+        float h = harperActive ? fabsf(sinf(ms->comms.freqAnim * 1.2f + (float)w * 0.5f)) * 28.0f + 4.0f : 4.0f;
+        int wx = rightX + 24 + w * 7;
+        DrawLine(wx, panY + 110 - (int)(h * 0.5f), wx, panY + 110 + (int)(h * 0.5f),
+                 harperActive ? (Color){ 255, 200, 40, 220 } : (Color){ 70, 70, 100, 140 });
+    }
+
+    /* 3. Center Dialogue Box */
+    int boxW = (int)((float)screenW * 0.76f);
+    int boxH = 175;
+    int boxX = screenW / 2 - boxW / 2;
+    int boxY = (int)((float)screenH * 0.52f);
+
+    DrawRectangleRounded((Rectangle){ (float)boxX, (float)boxY, (float)boxW, (float)boxH }, 0.06f, 6,
+                         (Color){ 4, 8, 22, 240 });
+    DrawRectangleRoundedLines((Rectangle){ (float)boxX, (float)boxY, (float)boxW, (float)boxH }, 0.06f, 6,
+                              cd->isPlayer ? (Color){ 255, 180, 30, 200 } : (Color){ 0, 180, 255, 200 });
+
+    /* Speaker Badge */
+    DrawText(cd->speaker, boxX + 24, boxY + 18, 16, cd->isPlayer ? (Color){ 255, 215, 0, 255 } : (Color){ 0, 220, 255, 255 });
+    DrawText(cd->callsign, boxX + 24, boxY + 40, 11, (Color){ 140, 160, 190, 180 });
+    DrawLine(boxX + 20, boxY + 58, boxX + boxW - 20, boxY + 58, (Color){ 30, 60, 100, 180 });
+
+    /* Typewriter Substring */
+    char subBuf[512];
+    int len = ms->comms.charsRevealed;
+    if (len > (int)sizeof(subBuf) - 1) len = (int)sizeof(subBuf) - 1;
+    strncpy(subBuf, cd->text, (size_t)len);
+    subBuf[len] = '\0';
+
+    /* Draw Dialogue Text (Wrapped) */
+    DrawText(subBuf, boxX + 24, boxY + 76, 18, (Color){ 235, 245, 255, 255 });
+
+    /* Blinking Terminal Cursor */
+    if ((int)(GetTime() * 4.0f) % 2 == 0) {
+        int curOffset = MeasureText(subBuf, 18);
+        DrawRectangle(boxX + 26 + curOffset, boxY + 76, 9, 18, (Color){ 0, 240, 200, 240 });
+    }
+
+    /* 4. Navigation Prompt */
+    float pulse = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
+    const char *prompt = "[ SPACE / ENTER / CLICK ] ADVANCE   |   [ ESC ] LAUNCH TO BATTLE";
+    int pw = MeasureText(prompt, 13);
+    DrawText(prompt, screenW / 2 - pw / 2, screenH - 36, 13,
+             (Color){ 0, 220, 255, (unsigned char)(140 + pulse * 115) });
+}
+
+/* ══════════════════════════════════════════════════════
+   MILITARY SERVICE RECORD & MEDALS SHOWCASE
+══════════════════════════════════════════════════════ */
+
+void Menu_UpdateMedals(MenuState *ms, GameContext *ctx, float dt) {
+    (void)dt;
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+        Game_PlaySFX(SFX_MENU_SELECT);
+        Game_ChangeState(ctx, STATE_MAIN_MENU);
+        return;
+    }
+
+    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+        ms->selectedMedal = (ms->selectedMedal - 1 + MEDAL_COUNT) % MEDAL_COUNT;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+        ms->selectedMedal = (ms->selectedMedal + 1) % MEDAL_COUNT;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+        ms->selectedMedal = (ms->selectedMedal - 4 + MEDAL_COUNT) % MEDAL_COUNT;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+        ms->selectedMedal = (ms->selectedMedal + 4) % MEDAL_COUNT;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        Game_ChangeState(ctx, STATE_MAIN_MENU);
+    }
+}
+
+void Menu_DrawMedals(const MenuState *ms, const PlayerProgress *prog, int screenW, int screenH) {
+    DrawRectangle(0, 0, screenW, screenH, (Color){ 2, 4, 14, 225 });
+
+    /* Title */
+    const char *title = "MILITARY SERVICE RECORD & CAMPAIGN HONORS";
+    int tw = MeasureText(title, 28);
+    DrawText(title, screenW / 2 - tw / 2, (int)((float)screenH * 0.06f), 28, (Color){ 0, 220, 255, 255 });
+
+    /* Pilot Rank Callout */
+    const char *rank = Progress_GetRankName(prog);
+    char rankBuf[128];
+    snprintf(rankBuf, sizeof(rankBuf), "PILOT: HARPER KOLLINS  //  RANK: %s", rank);
+    int rw = MeasureText(rankBuf, 16);
+    DrawText(rankBuf, screenW / 2 - rw / 2, (int)((float)screenH * 0.06f) + 38, 16, (Color){ 255, 215, 0, 255 });
+
+    /* Lifetime Stats Bar */
+    int statBoxW = (int)((float)screenW * 0.82f);
+    int statBoxH = 50;
+    int statBoxX = screenW / 2 - statBoxW / 2;
+    int statBoxY = (int)((float)screenH * 0.16f);
+    DrawRectangleRounded((Rectangle){ (float)statBoxX, (float)statBoxY, (float)statBoxW, (float)statBoxH },
+                         0.1f, 6, (Color){ 8, 14, 30, 220 });
+    DrawRectangleRoundedLines((Rectangle){ (float)statBoxX, (float)statBoxY, (float)statBoxW, (float)statBoxH },
+                              0.1f, 6, (Color){ 0, 140, 220, 160 });
+
+    char s1[64], s2[64], s3[64], s4[64];
+    snprintf(s1, sizeof(s1), "SYNOD KILLS: %d", prog->totalKills);
+    snprintf(s2, sizeof(s2), "SHUTTLES SAVED: %d", prog->totalShuttlesSaved);
+    snprintf(s3, sizeof(s3), "BOSSES CRUSHED: %d", prog->totalBossesDefeated);
+    snprintf(s4, sizeof(s4), "BEST SCORE: %d", prog->highestScore);
+
+    int colW = statBoxW / 4;
+    DrawText(s1, statBoxX + colW * 0 + 16, statBoxY + 18, 13, (Color){ 0, 240, 200, 240 });
+    DrawText(s2, statBoxX + colW * 1 + 16, statBoxY + 18, 13, (Color){ 0, 240, 200, 240 });
+    DrawText(s3, statBoxX + colW * 2 + 16, statBoxY + 18, 13, (Color){ 0, 240, 200, 240 });
+    DrawText(s4, statBoxX + colW * 3 + 16, statBoxY + 18, 13, (Color){ 255, 215, 0, 255 });
+
+    /* Medals Grid (2 rows of 4 medals) */
+    int gridStartY = (int)((float)screenH * 0.28f);
+    int mCardW = (statBoxW - 3 * 16) / 4;
+    int mCardH = 110;
+
+    for (int i = 0; i < MEDAL_COUNT; i++) {
+        int row = i / 4;
+        int col = i % 4;
+        int mx = statBoxX + col * (mCardW + 16);
+        int my = gridStartY + row * (mCardH + 18);
+
+        int unlocked = Progress_HasMedal(prog, (MedalId)i);
+        int isSelected = (ms->selectedMedal == i);
+
+        Color cardBg = unlocked ? (Color){ 12, 22, 44, 230 } : (Color){ 6, 8, 16, 210 };
+        Color cardLine = isSelected ? (Color){ 0, 240, 255, 255 } :
+                         unlocked   ? (Color){ 255, 200, 30, 180 } : (Color){ 40, 50, 70, 140 };
+
+        DrawRectangleRounded((Rectangle){ (float)mx, (float)my, (float)mCardW, (float)mCardH }, 0.08f, 6, cardBg);
+        DrawRectangleRoundedLines((Rectangle){ (float)mx, (float)my, (float)mCardW, (float)mCardH }, 0.08f, 6, cardLine);
+
+        /* Medal Badge Icon */
+        const char *icon = Progress_GetMedalIcon((MedalId)i);
+        DrawText(icon, mx + 14, my + 14, 18, unlocked ? (Color){ 255, 215, 0, 255 } : (Color){ 80, 90, 110, 180 });
+
+        /* Medal Title */
+        const char *mTitle = Progress_GetMedalTitle((MedalId)i);
+        DrawText(mTitle, mx + 14, my + 42, 12, unlocked ? (Color){ 0, 220, 255, 255 } : (Color){ 120, 130, 150, 180 });
+
+        /* Status label */
+        const char *status = unlocked ? "[ AWARDED ]" : "[ LOCKED ]";
+        DrawText(status, mx + 14, my + 78, 11, unlocked ? (Color){ 0, 255, 160, 240 } : (Color){ 160, 60, 60, 200 });
+    }
+
+    /* Selected Medal Detail Box at bottom */
+    int detailY = gridStartY + 2 * (mCardH + 18) + 10;
+    int detailH = 65;
+    DrawRectangleRounded((Rectangle){ (float)statBoxX, (float)detailY, (float)statBoxW, (float)detailH },
+                         0.08f, 6, (Color){ 8, 14, 28, 230 });
+    DrawRectangleRoundedLines((Rectangle){ (float)statBoxX, (float)detailY, (float)statBoxW, (float)detailH },
+                              0.08f, 6, (Color){ 0, 180, 255, 140 });
+
+    const char *selTitle = Progress_GetMedalTitle((MedalId)ms->selectedMedal);
+    const char *selDesc  = Progress_GetMedalDesc((MedalId)ms->selectedMedal);
+    DrawText(selTitle, statBoxX + 18, detailY + 12, 15, (Color){ 255, 215, 0, 255 });
+    DrawText(selDesc,  statBoxX + 18, detailY + 36, 13, (Color){ 200, 220, 245, 220 });
+
+    /* Back Prompt */
+    const char *bPrompt = "[ ARROWS / WASD ] SELECT MEDAL   |   [ ESC / ENTER / CLICK ] BACK TO MAIN MENU";
+    int bpw = MeasureText(bPrompt, 13);
+    DrawText(bPrompt, screenW / 2 - bpw / 2, screenH - 28, 13, (Color){ 140, 160, 200, 190 });
 }

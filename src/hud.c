@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "config.h"
 #include "powerup.h"
+#include "progress.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
@@ -17,7 +18,7 @@ static void DrawBar(int x, int y, int w, int h, float frac,
     DrawRectangleLines(x, y, w, h, border);
 }
 
-void HUD_DrawBossBar(const Enemy *boss, int screenW, int screenH) {
+void HUD_DrawBossBar(const Enemy *boss, int wave, int screenW, int screenH) {
     if (!boss || !boss->active) return;
 
     float frac = (float)boss->health / (float)boss->healthMax;
@@ -29,13 +30,16 @@ void HUD_DrawBossBar(const Enemy *boss, int screenW, int screenH) {
     /* Background panel */
     DrawRectangle(bx - 6, by - 24, bw + 12, bh + 30, (Color){10, 0, 20, 180});
 
-    /* Label */
-    const char *bossLabel = (boss->bossPhase == 2) ?
-        "SYNOD DREADNOUGHT 'VINDICATOR' // [CRITICAL REACTOR BREACH]" :
-        "SYNOD DREADNOUGHT 'VINDICATOR' // [CAPITAL FLAGSHIP]";
-    int labelWidth = MeasureText(bossLabel, 13);
-    DrawText(bossLabel, bx + bw / 2 - labelWidth / 2, by - 18, 13,
-             boss->bossPhase == 2 ? (Color){255, 60, 60, 255} : (Color){220, 80, 255, 255});
+    /* Sector Boss Label */
+    int sector = (wave <= 3) ? 0 : (wave <= 6) ? 1 : (wave <= 9) ? 2 : 3;
+    const char *bossName = Enemy_GetBossName(sector);
+    char bossLabel[160];
+    snprintf(bossLabel, sizeof(bossLabel), "%s %s", bossName,
+             boss->bossPhase == 2 ? "// [CRITICAL REACTOR BREACH]" : "// [CAPITAL FLAGSHIP]");
+
+    int labelWidth = MeasureText(bossLabel, 12);
+    DrawText(bossLabel, bx + bw / 2 - labelWidth / 2, by - 18, 12,
+             boss->bossPhase == 2 ? (Color){255, 60, 60, 255} : (Color){255, 215, 0, 255});
 
     /* Bar */
     Color barColor = (frac > 0.5f) ? (Color){180, 0, 255, 255} :
@@ -43,6 +47,28 @@ void HUD_DrawBossBar(const Enemy *boss, int screenW, int screenH) {
                                       (Color){255, 30, 30, 255};
     DrawBar(bx, by, bw, bh, frac, (Color){40, 0, 60, 220}, barColor,
             (Color){200, 100, 255, 200});
+}
+
+void HUD_DrawMedalPopup(int medalId, float timer, int screenW) {
+    if (timer <= 0.0f || medalId < 0 || medalId >= MEDAL_COUNT) return;
+
+    float alpha = CLAMP(timer * 1.5f, 0.0f, 1.0f);
+    int pw = 420, ph = 46;
+    int px = screenW / 2 - pw / 2;
+    int py = 70;
+
+    DrawRectangleRounded((Rectangle){ (float)px, (float)py, (float)pw, (float)ph }, 0.15f, 6,
+                         (Color){ 6, 14, 30, (unsigned char)(alpha * 230) });
+    DrawRectangleRoundedLines((Rectangle){ (float)px, (float)py, (float)pw, (float)ph }, 0.15f, 6,
+                              (Color){ 255, 215, 0, (unsigned char)(alpha * 255) });
+
+    const char *icon = Progress_GetMedalIcon((MedalId)medalId);
+    const char *title = Progress_GetMedalTitle((MedalId)medalId);
+
+    char banner[128];
+    snprintf(banner, sizeof(banner), "HONOR UNLOCKED: %s %s", icon, title);
+    int tw = MeasureText(banner, 13);
+    DrawText(banner, screenW / 2 - tw / 2, py + 16, 13, (Color){ 255, 220, 40, (unsigned char)(alpha * 255) });
 }
 
 void HUD_Draw(const GameContext *ctx, const Player *player,
@@ -132,7 +158,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
     /* ── Boss bar ── */
     int bossIdx = Enemies_FindBoss(enemies);
     if (bossIdx >= 0) {
-        HUD_DrawBossBar(&enemies->enemies[bossIdx], screenW, screenH);
+        HUD_DrawBossBar(&enemies->enemies[bossIdx], ctx->wave, screenW, screenH);
     }
 
     (void)now;

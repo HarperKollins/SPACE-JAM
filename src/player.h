@@ -15,6 +15,14 @@ typedef enum {
   WEAPON_COUNT
 } WeaponType;
 
+typedef enum {
+  SHIP_TIER_MK1 = 0, /* Sector 1: Standard Vanguard Interceptor */
+  SHIP_TIER_MK2,     /* Sector 2: Armored Striker (reinforced titanium prow & vents) */
+  SHIP_TIER_MK3,     /* Sector 3: Plasma Ace (cyan plasma circuit etchings & quad hardpoints) */
+  SHIP_TIER_MK4,     /* Sector 4: Ascendant Legend (royal gold trims, radiant particle aura) */
+  SHIP_TIER_COUNT
+} ShipTier;
+
 typedef struct {
   /* Transform */
   Vector2 pos;
@@ -30,6 +38,7 @@ typedef struct {
 
   /* Weapon state */
   WeaponType weapon;
+  ShipTier   shipTier;
   float fireCooldown;
   float rapidFireTimer;
   float doubleShotTimer;
@@ -47,6 +56,7 @@ typedef struct {
 } Player;
 
 void Player_Init(Player *p, int screenW, int screenH);
+void Player_SetShipTier(Player *p, ShipTier tier);
 void Player_Update(Player *p, float dt, int screenW, int screenH);
 void Player_Draw(const Player *p);
 void Player_TakeDamage(Player *p, int dmg);

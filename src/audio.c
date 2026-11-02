@@ -33,6 +33,11 @@ static const char *kSfxPaths[SFX_COUNT] = {
     "assets/audio/menu_select.wav",
     "assets/audio/menu_confirm.wav",
     "assets/audio/game_over.wav",
+    "assets/audio/radio_chirp.wav",
+    "assets/audio/radio_static.wav",
+    "assets/audio/radio_beep.wav",
+    "assets/audio/warp_jump.wav",
+    "assets/audio/medal_award.wav",
 };
 
 static const char *kMusicPaths[MUSIC_TRACK_COUNT] = {
@@ -75,6 +80,11 @@ static Sound SynthesizeFallbackSFX(SfxId id) {
     else if (id == SFX_BOSS_APPEAR || id == SFX_GAME_OVER) dur = 1.2f;
     else if (id == SFX_BOSS_EXPLODE) dur = 1.6f;
     else if (id == SFX_MENU_SELECT) dur = 0.05f;
+    else if (id == SFX_RADIO_CHIRP) dur = 0.16f;
+    else if (id == SFX_RADIO_STATIC) dur = 0.12f;
+    else if (id == SFX_RADIO_BEEP) dur = 0.04f;
+    else if (id == SFX_WARP_JUMP) dur = 1.10f;
+    else if (id == SFX_MEDAL_AWARD) dur = 0.75f;
 
     unsigned int frames = (unsigned int)(sampleRate * dur);
     int16_t *buf = (int16_t *)malloc(frames * sizeof(int16_t));
@@ -130,6 +140,46 @@ static Sound SynthesizeFallbackSFX(SfxId id) {
             case SFX_MENU_CONFIRM: {
                 phase += 2.0f * (float)M_PI * (440.0f + 440.0f * p) / sampleRate;
                 sample = sinf(phase) * expf(-p * 6.0f) * 0.75f;
+                break;
+            }
+            case SFX_RADIO_CHIRP: {
+                /* Dual radio frequency chirp: 1800 Hz then 2400 Hz */
+                float freq = (p < 0.5f) ? 1800.0f : 2400.0f;
+                phase += 2.0f * (float)M_PI * freq / sampleRate;
+                float subT = (p < 0.5f) ? (p * 2.0f) : ((p - 0.5f) * 2.0f);
+                sample = sinf(phase) * (1.0f - subT) * 0.85f;
+                break;
+            }
+            case SFX_RADIO_STATIC: {
+                /* Squelch noise burst with low-frequency rumble */
+                float noise = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+                phase += 2.0f * (float)M_PI * 180.0f / sampleRate;
+                sample = (noise * 0.75f + sinf(phase) * 0.25f) * (1.0f - p * 0.8f) * 0.70f;
+                break;
+            }
+            case SFX_RADIO_BEEP: {
+                /* Short typewriter character blip: 920 Hz */
+                phase += 2.0f * (float)M_PI * 920.0f / sampleRate;
+                sample = sinf(phase) * expf(-p * 14.0f) * 0.65f;
+                break;
+            }
+            case SFX_WARP_JUMP: {
+                /* Rising hyper-drive sweep from 140 Hz to 1600 Hz then deep sonic thunder */
+                float freq = (p < 0.6f) ? (140.0f + 1460.0f * (p / 0.6f) * (p / 0.6f)) : 90.0f;
+                phase += 2.0f * (float)M_PI * freq / sampleRate;
+                float noise = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+                float env = (p < 0.6f) ? (p / 0.6f) : (1.0f - (p - 0.6f) / 0.4f);
+                sample = (sinf(phase) * 0.65f + noise * 0.35f) * env * 0.90f;
+                break;
+            }
+            case SFX_MEDAL_AWARD: {
+                /* Heroic 4-note brass fanfare arpeggio (C5, E5, G5, C6) */
+                float notes[4] = { 523.25f, 659.25f, 783.99f, 1046.50f };
+                int n = (int)(p * 4.0f);
+                if (n > 3) n = 3;
+                phase += 2.0f * (float)M_PI * notes[n] / sampleRate;
+                float subT = fmodf(p * 4.0f, 1.0f);
+                sample = sinf(phase) * (1.0f - subT * 0.7f) * 0.85f;
                 break;
             }
             default: {
