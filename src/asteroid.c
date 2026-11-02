@@ -161,11 +161,40 @@ static void DrawAsteroid(const Asteroid *a) {
                             a->pos.y + sinf(angle) * r };
     }
 
-    /* Fill triangles from center */
+    /* Fill base rock faceted triangles from center */
     for (int i = 0; i < sides; i++) {
-        DrawTriangle(a->pos, pts[i], pts[(i + 1) % sides], a->color);
+        /* Subtle shading variation per facet */
+        Color facetCol = (i % 2 == 0) ? a->color : ColorAlpha(a->color, 0.85f);
+        DrawTriangle(a->pos, pts[i], pts[(i + 1) % sides], facetCol);
     }
-    /* Edge */
+
+    /* Rock craters for texture & depth */
+    if (a->radius >= ASTEROID_MEDIUM_RADIUS) {
+        float cosR = cosf(rot);
+        float sinR = sinf(rot);
+        Color craterShade = { (unsigned char)MAX(0, a->color.r - 35),
+                              (unsigned char)MAX(0, a->color.g - 35),
+                              (unsigned char)MAX(0, a->color.b - 35), 220 };
+        Color craterRim   = { (unsigned char)MIN(255, a->colorEdge.r + 20),
+                              (unsigned char)MIN(255, a->colorEdge.g + 20),
+                              (unsigned char)MIN(255, a->colorEdge.b + 20), 180 };
+
+        /* Crater 1 */
+        float c1x = a->radius * 0.32f, c1y = -a->radius * 0.22f;
+        Vector2 cr1 = { a->pos.x + c1x * cosR - c1y * sinR,
+                        a->pos.y + c1x * sinR + c1y * cosR };
+        DrawCircleV(cr1, a->radius * 0.24f, craterShade);
+        DrawCircleLinesV(cr1, a->radius * 0.24f, craterRim);
+
+        /* Crater 2 */
+        float c2x = -a->radius * 0.28f, c2y = a->radius * 0.25f;
+        Vector2 cr2 = { a->pos.x + c2x * cosR - c2y * sinR,
+                        a->pos.y + c2x * sinR + c2y * cosR };
+        DrawCircleV(cr2, a->radius * 0.18f, craterShade);
+        DrawCircleLinesV(cr2, a->radius * 0.18f, craterRim);
+    }
+
+    /* Outer structural ridge lines */
     for (int i = 0; i < sides; i++) {
         DrawLineV(pts[i], pts[(i + 1) % sides], a->colorEdge);
     }
