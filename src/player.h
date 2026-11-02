@@ -38,9 +38,12 @@ typedef struct {
   float invincibleTimer;
 
   /* Visual */
-  float thrustAnim; /* 0–1, drives engine glow */
+  float thrustAnim; /* 0–1, drives base engine glow (always active/flexing) */
+  float boostAnim;  /* 0-1, hyper-nitro afterburner overdrive */
+  float bankAngle;  /* -1.0 to +1.0, 3D visual roll when turning */
   float flashTimer; /* hit flash */
   int shieldActive;
+  int isBoosting;
 } Player;
 
 void Player_Init(Player *p, int screenW, int screenH);

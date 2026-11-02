@@ -51,7 +51,7 @@ static void InitEnemy(Enemy *e, EnemyType type, Vector2 pos) {
     e->state      = ESTATE_APPROACH;
     e->strafeDir  = (GetRandomValue(0,1) == 0) ? 1.0f : -1.0f;
     e->stateTimer = RandFloat(1.5f, 4.0f);
-    e->fireTimer  = RandFloat(0.5f, 2.0f);
+    e->fireTimer  = RandFloat(1.8f, 3.2f);
 }
 
 static Vector2 RandomEdgePos(int screenW, int screenH) {

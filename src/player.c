@@ -29,9 +29,12 @@ void Player_Init(Player *p, int screenW, int screenH) {
     p->spreadShotTimer  = 0.0f;
     p->shieldTimer      = 0.0f;
     p->invincibleTimer  = 0.0f;
-    p->thrustAnim   = 0.0f;
+    p->thrustAnim   = 0.45f; /* Always active base nitro flex */
+    p->boostAnim    = 0.0f;
+    p->bankAngle    = 0.0f;
     p->flashTimer   = 0.0f;
     p->shieldActive = 0;
+    p->isBoosting   = 0;
 }
 
 /* ── Input & Physics ─────────────────────────────────── */
@@ -42,29 +45,53 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
         return;
     }
 
-    /* ── Rotation ── */
+    /* ── Rotation & 2.5D Visual Banking ── */
     float rot = 0.0f;
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  rot -= PLAYER_ROT_SPEED;
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) rot += PLAYER_ROT_SPEED;
+    float targetBank = 0.0f;
+    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+        rot -= PLAYER_ROT_SPEED;
+        targetBank -= 1.0f;
+    }
+    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+        rot += PLAYER_ROT_SPEED;
+        targetBank += 1.0f;
+    }
     p->rotation += rot * dt;
 
-    /* ── Thrust ── */
+    /* Smoothly interpolate visual bank angle for snappy 2.5D roll */
+    p->bankAngle += (targetBank - p->bankAngle) * MIN(1.0f, dt * 12.0f);
+
+    /* ── Thrust & Hyper-Nitro Afterburner ── */
     Vector2 forward = AngleToDir(p->rotation);
+    int thrustForward = (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP));
+    int hyperNitro    = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT) ||
+                         IsMouseButtonDown(MOUSE_BUTTON_RIGHT));
+
+    p->isBoosting = (thrustForward && hyperNitro) || (hyperNitro && Vec2Len(p->vel) > 30.0f);
+
+    float accel = PLAYER_ACCEL;
+    float maxSpeed = PLAYER_MAX_SPEED;
+
+    if (p->isBoosting) {
+        accel = PLAYER_BOOST_ACCEL;
+        maxSpeed = PLAYER_BOOST_SPEED;
+    }
+
     int thrusting = 0;
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
-        p->vel.x += forward.x * PLAYER_ACCEL * dt;
-        p->vel.y += forward.y * PLAYER_ACCEL * dt;
+    if (thrustForward || p->isBoosting) {
+        p->vel.x += forward.x * accel * dt;
+        p->vel.y += forward.y * accel * dt;
         thrusting = 1;
     }
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
-        p->vel.x -= forward.x * PLAYER_ACCEL * 0.55f * dt;
-        p->vel.y -= forward.y * PLAYER_ACCEL * 0.55f * dt;
+        p->vel.x -= forward.x * accel * 0.55f * dt;
+        p->vel.y -= forward.y * accel * 0.55f * dt;
     }
 
     /* ── Speed cap ── */
     float speed = Vec2Len(p->vel);
-    if (speed > PLAYER_MAX_SPEED) {
-        p->vel = Vec2Scale(Vec2Norm(p->vel), PLAYER_MAX_SPEED);
+    if (speed > maxSpeed) {
+        p->vel = Vec2Scale(Vec2Norm(p->vel), maxSpeed);
     }
 
     /* ── Damping (frame-rate independent) ── */
@@ -78,9 +105,9 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
 
     /* ── Screen boundaries (wrap) ── */
     float margin = PLAYER_RADIUS;
-    if (p->pos.x < -margin)       p->pos.x = (float)screenW + margin;
+    if (p->pos.x < -margin)          p->pos.x = (float)screenW + margin;
     if (p->pos.x > screenW + margin) p->pos.x = -margin;
-    if (p->pos.y < -margin)       p->pos.y = (float)screenH + margin;
+    if (p->pos.y < -margin)          p->pos.y = (float)screenH + margin;
     if (p->pos.y > screenH + margin) p->pos.y = -margin;
 
     /* ── Timers ── */
@@ -98,12 +125,15 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
     if (p->invincibleTimer > 0.0f) p->invincibleTimer -= dt;
     if (p->fireCooldown    > 0.0f) p->fireCooldown    -= dt;
 
-    /* ── Engine animation ── */
-    if (thrusting) {
-        p->thrustAnim = MIN(1.0f, p->thrustAnim + dt * 8.0f);
-    } else {
-        p->thrustAnim = MAX(0.0f, p->thrustAnim - dt * 6.0f);
-    }
+    /* ── Always-Active Nitro Flex Animation ── */
+    /* Base engine is ALWAYS flexing with vivid plasma and hot core */
+    float targetThrust = thrusting ? 1.0f : 0.42f;
+    float thrustRate = thrusting ? 14.0f : 6.0f;
+    p->thrustAnim += (targetThrust - p->thrustAnim) * MIN(1.0f, dt * thrustRate);
+
+    /* Nitro overdrive flare */
+    float targetBoost = p->isBoosting ? 1.0f : 0.0f;
+    p->boostAnim += (targetBoost - p->boostAnim) * MIN(1.0f, dt * 14.0f);
 
     /* ── Weapon upgrade expiry ── */
     if (p->rapidFireTimer <= 0.0f && p->doubleShotTimer <= 0.0f && p->spreadShotTimer <= 0.0f) {
@@ -119,45 +149,67 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
 
 /* ── Drawing ─────────────────────────────────────────── */
 
-static void DrawEngineGlow(Vector2 pos, float rotation, float thrust) {
+static void DrawEngineGlow(Vector2 pos, float rotation, float thrust, float boost) {
     Vector2 forward = AngleToDir(rotation);
     Vector2 back    = { -forward.x, -forward.y };
+    Vector2 perp    = { -forward.y, forward.x };
     Vector2 nozzle  = { pos.x + back.x * 14.0f, pos.y + back.y * 14.0f };
 
-    /* 1. Hot Turbine Core (Always visible orange combustion chamber glow) */
-    float corePulse = 0.85f + 0.15f * sinf(GetTime() * 16.0f);
-    DrawCircleV(nozzle, 4.5f * corePulse, (Color){ 255, 140, 20, 240 });
-    DrawCircleV(nozzle, 2.2f * corePulse, (Color){ 255, 230, 80, 255 });
+    /* 1. Hot Turbine Core: Always flexing glowing orange combustion chamber */
+    float timeSec = (float)GetTime();
+    float corePulse = 0.88f + 0.12f * sinf(timeSec * 22.0f);
+    float coreRadius = 4.8f + boost * 2.2f;
+    DrawCircleV(nozzle, coreRadius * corePulse, (Color){ 255, 130, 20, 240 });
+    DrawCircleV(nozzle, (coreRadius * 0.55f) * corePulse, (Color){ 255, 235, 90, 255 });
+    DrawCircleV(nozzle, (coreRadius * 0.25f), WHITE);
 
-    /* 2. Plasma Thruster Jet (Flares up dramatically when thrusting) */
-    float jetAmount = MAX(0.18f, thrust); /* Idle blue plasma whisper when not thrusting */
-    float jetLength = 12.0f + jetAmount * 34.0f + RandFloat(-1.5f, 1.5f);
-    float jetWidth  =  4.0f + jetAmount * 11.0f + RandFloat(-0.8f, 0.8f);
+    /* 2. Nitro Flame Dimensions:
+          - Idle: 22-26px electric-cyan plasma blade (always alive & flexing)
+          - Forward thrust: 50-60px
+          - Hyper-nitro boost: 80-98px supersonic blowtorch! */
+    float flutter = sinf(timeSec * 45.0f) * 2.0f + RandFloat(-1.2f, 1.2f);
+    float jetLength = 22.0f + thrust * 32.0f + boost * 42.0f + flutter;
+    float jetWidth  =  6.5f + thrust *  5.0f + boost *  6.5f + RandFloat(-0.5f, 0.5f);
 
-    /* Perpendicular vector for flame width */
-    Vector2 perp = { -forward.y, forward.x };
-
-    /* Outer Deep Blue Plasma Halo */
+    /* Outer Deep Blue Ion Aura */
     Vector2 haloTip = { nozzle.x + back.x * (jetLength * 1.25f), nozzle.y + back.y * (jetLength * 1.25f) };
-    Vector2 haloL   = { nozzle.x - perp.x * (jetWidth * 1.35f),  nozzle.y - perp.y * (jetWidth * 1.35f) };
-    Vector2 haloR   = { nozzle.x + perp.x * (jetWidth * 1.35f),  nozzle.y + perp.y * (jetWidth * 1.35f) };
-    DrawTriangle(nozzle, haloL, haloTip, (Color){   0, 100, 255, (unsigned char)(110 * jetAmount) });
-    DrawTriangle(nozzle, haloTip, haloR, (Color){   0, 100, 255, (unsigned char)(110 * jetAmount) });
+    Vector2 haloL   = { nozzle.x - perp.x * (jetWidth * 1.45f),  nozzle.y - perp.y * (jetWidth * 1.45f) };
+    Vector2 haloR   = { nozzle.x + perp.x * (jetWidth * 1.45f),  nozzle.y + perp.y * (jetWidth * 1.45f) };
+    unsigned char haloAlpha = (unsigned char)(120 + thrust * 80 + boost * 55);
+    DrawTriangle(nozzle, haloL, haloTip, (Color){   0, 110, 255, haloAlpha });
+    DrawTriangle(nozzle, haloTip, haloR, (Color){   0, 110, 255, haloAlpha });
 
-    /* Mid Electric-Cyan Diamond Jet (Iconic plasma flame from reference) */
+    /* Mid Electric-Cyan Diamond Jet (The iconic HK-01 nitro flame) */
     Vector2 jetTip = { nozzle.x + back.x * jetLength, nozzle.y + back.y * jetLength };
     Vector2 jetL   = { nozzle.x - perp.x * jetWidth,  nozzle.y - perp.y * jetWidth };
     Vector2 jetR   = { nozzle.x + perp.x * jetWidth,  nozzle.y + perp.y * jetWidth };
-    DrawTriangle(nozzle, jetL, jetTip, (Color){   0, 220, 255, (unsigned char)(210 * jetAmount) });
-    DrawTriangle(nozzle, jetTip, jetR, (Color){   0, 220, 255, (unsigned char)(210 * jetAmount) });
+    unsigned char cyanAlpha = (unsigned char)(210 + (int)(boost * 45.0f));
+    DrawTriangle(nozzle, jetL, jetTip, (Color){   0, 225, 255, cyanAlpha });
+    DrawTriangle(nozzle, jetTip, jetR, (Color){   0, 225, 255, cyanAlpha });
 
-    /* Inner Super-Hot White Core Streak */
-    if (thrust > 0.05f) {
-        Vector2 coreTip = { nozzle.x + back.x * (jetLength * 0.55f), nozzle.y + back.y * (jetLength * 0.55f) };
-        Vector2 coreL   = { nozzle.x - perp.x * (jetWidth * 0.40f),  nozzle.y - perp.y * (jetWidth * 0.40f) };
-        Vector2 coreR   = { nozzle.x + perp.x * (jetWidth * 0.40f),  nozzle.y + perp.y * (jetWidth * 0.40f) };
-        DrawTriangle(nozzle, coreL, coreTip, (Color){ 255, 255, 255, (unsigned char)(240 * thrust) });
-        DrawTriangle(nozzle, coreTip, coreR, (Color){ 255, 255, 255, (unsigned char)(240 * thrust) });
+    /* Inner Super-Hot White/Laser Core */
+    float innerLen = jetLength * (0.45f + boost * 0.15f);
+    float innerWid = jetWidth  * 0.40f;
+    Vector2 coreTip = { nozzle.x + back.x * innerLen, nozzle.y + back.y * innerLen };
+    Vector2 coreL   = { nozzle.x - perp.x * innerWid, nozzle.y - perp.y * innerWid };
+    Vector2 coreR   = { nozzle.x + perp.x * innerWid, nozzle.y + perp.y * innerWid };
+    DrawTriangle(nozzle, coreL, coreTip, (Color){ 255, 255, 255, 250 });
+    DrawTriangle(nozzle, coreTip, coreR, (Color){ 255, 255, 255, 250 });
+
+    /* 3. Supersonic Mach Shock Diamonds (Flexing nitro afterburner nodes) */
+    if (thrust > 0.35f || boost > 0.1f) {
+        int numDiamonds = (boost > 0.2f) ? 3 : 2;
+        for (int d = 1; d <= numDiamonds; d++) {
+            float distAlong = (float)d * (jetLength / (float)(numDiamonds + 1));
+            Vector2 dCenter = { nozzle.x + back.x * distAlong, nozzle.y + back.y * distAlong };
+            float dSize = (3.5f - (float)d * 0.6f) * (0.8f + boost * 0.5f);
+            Vector2 dN = { dCenter.x - back.x * dSize, dCenter.y - back.y * dSize };
+            Vector2 dS = { dCenter.x + back.x * dSize, dCenter.y + back.y * dSize };
+            Vector2 dE = { dCenter.x + perp.x * dSize * 0.85f, dCenter.y + perp.y * dSize * 0.85f };
+            Vector2 dW = { dCenter.x - perp.x * dSize * 0.85f, dCenter.y - perp.y * dSize * 0.85f };
+            DrawTriangle(dN, dW, dS, (Color){ 220, 255, 255, 240 });
+            DrawTriangle(dN, dS, dE, (Color){ 220, 255, 255, 240 });
+        }
     }
 }
 
@@ -168,6 +220,19 @@ static void DrawShield(Vector2 pos, float radius, float timer) {
     DrawCircleV(pos, radius + 8.0f, outer);
     DrawCircleV(pos, radius + 4.0f, inner);
     DrawCircleLinesV(pos, radius + 8.0f, (Color){100, 220, 255, (unsigned char)(150 + pulse * 105)});
+}
+
+static inline Vector2 RotateBankPoint(Vector2 pos, float lx, float ly, float cosR, float sinR, float bank) {
+    float bx = lx;
+    if (bx < -0.1f) {
+        bx *= (bank < 0.0f) ? (1.0f - (-bank) * 0.28f) : (1.0f + bank * 0.10f);
+    } else if (bx > 0.1f) {
+        bx *= (bank > 0.0f) ? (1.0f - bank * 0.28f) : (1.0f + (-bank) * 0.10f);
+    }
+    Vector2 res;
+    res.x = pos.x + bx * cosR - ly * sinR;
+    res.y = pos.y + bx * sinR + ly * cosR;
+    return res;
 }
 
 void Player_Draw(const Player *p) {
@@ -194,15 +259,17 @@ void Player_Draw(const Player *p) {
     }
 
     /* Engine plasma jet (drawn behind the ship) */
-    DrawEngineGlow(p->pos, p->rotation, p->thrustAnim);
+    DrawEngineGlow(p->pos, p->rotation, p->thrustAnim, p->boostAnim);
 
-    /* ── HK-01 Interceptor Top-Down Pixel-Style Rendering ── */
+    /* ── HK-01 Interceptor Top-Down Pixel-Style Rendering with 2.5D Banking ── */
     float rot = DEG2RAD(p->rotation);
     float cosR = cosf(rot);
     float sinR = sinf(rot);
+    float bank = p->bankAngle; /* -1.0 to +1.0 for 3D roll perspective */
 
-    /* Helper: rotate local point around ship center */
-    #define RP(lx, ly) (Vector2){ p->pos.x + (lx)*cosR - (ly)*sinR, \
+    /* Helper macros: rotate local point around ship center */
+    #define RPB(lx, ly) RotateBankPoint(p->pos, (float)(lx), (float)(ly), cosR, sinR, bank)
+    #define RP(lx, ly)  (Vector2){ p->pos.x + (lx)*cosR - (ly)*sinR, \
                                    p->pos.y + (lx)*sinR + (ly)*cosR }
 
     /* Color Palette matching reference image HK-01 */
@@ -224,9 +291,9 @@ void Player_Draw(const Player *p) {
         colDarkFrame = ColorLerp(colDarkFrame, WHITE, frac);
     }
 
-    /* 1. Swept Delta Wings (White base with underside shadow) */
-    Vector2 wingL[3] = { RP( 0, -6), RP(-21,  9), RP(-6, 14) };
-    Vector2 wingR[3] = { RP( 0, -6), RP( 21,  9), RP( 6, 14) };
+    /* 1. Swept Delta Wings (White base with underside shadow and banking) */
+    Vector2 wingL[3] = { RP( 0, -6), RPB(-21,  9), RPB(-6, 14) };
+    Vector2 wingR[3] = { RP( 0, -6), RPB( 21,  9), RPB( 6, 14) };
     DrawTriangle(wingL[0], wingL[1], wingL[2], colHullWhite);
     DrawTriangle(wingR[0], wingR[2], wingR[1], colHullWhite);
     /* Wing panel shadow trim */
@@ -234,24 +301,25 @@ void Player_Draw(const Player *p) {
     DrawLineV(wingR[1], wingR[2], colHullShade);
 
     /* 2. Bold Crimson Red Wing Leading Edge Trim (Iconic HK-01 Styling) */
-    Vector2 redStripeL[3] = { RP( 0, -4), RP(-21,  9), RP(-15,  7) };
-    Vector2 redStripeR[3] = { RP( 0, -4), RP( 15,  7), RP( 21,  9) };
+    Vector2 redStripeL[3] = { RP( 0, -4), RPB(-21,  9), RPB(-15,  7) };
+    Vector2 redStripeR[3] = { RP( 0, -4), RPB( 15,  7), RPB( 21,  9) };
     DrawTriangle(redStripeL[0], redStripeL[1], redStripeL[2], colRedTrim);
     DrawTriangle(redStripeR[0], redStripeR[1], redStripeR[2], colRedTrim);
     DrawLineV(redStripeL[0], redStripeL[1], colRedDark);
     DrawLineV(redStripeR[0], redStripeR[2], colRedDark);
 
     /* 3. Wingtip Autocannons */
-    Vector2 gunL1 = RP(-20,  9), gunL2 = RP(-20, -1);
-    Vector2 gunR1 = RP( 20,  9), gunR2 = RP( 20, -1);
+    Vector2 gunL1 = RPB(-20,  9), gunL2 = RPB(-20, -2);
+    Vector2 gunR1 = RPB( 20,  9), gunR2 = RPB( 20, -2);
     DrawLineEx(gunL1, gunL2, 2.5f, colDarkFrame);
     DrawLineEx(gunR1, gunR2, 2.5f, colDarkFrame);
-    DrawCircleV(gunL2, 1.4f, (Color){ 0, 220, 255, 255 });
-    DrawCircleV(gunR2, 1.4f, (Color){ 0, 220, 255, 255 });
+    DrawCircleV(gunL2, 1.8f, (Color){ 0, 220, 255, 255 });
+    DrawCircleV(gunR2, 1.8f, (Color){ 0, 220, 255, 255 });
 
-    /* 4. Twin Vertical Tail Stabilizer Fins (Matching side fins from reference) */
-    Vector2 finL[3] = { RP(-9, 8), RP(-12, 16), RP(-7, 16) };
-    Vector2 finR[3] = { RP( 9, 8), RP(  7, 16), RP(12, 16) };
+    /* 4. Twin Vertical Tail Stabilizer Fins (Tilted during bank roll) */
+    float finTilt = bank * 3.5f;
+    Vector2 finL[3] = { RPB(-9 + finTilt, 8), RPB(-12 + finTilt, 16), RPB(-7 + finTilt, 16) };
+    Vector2 finR[3] = { RPB( 9 + finTilt, 8), RPB(  7 + finTilt, 16), RPB(12 + finTilt, 16) };
     DrawTriangle(finL[0], finL[1], finL[2], colHullWhite);
     DrawTriangle(finR[0], finR[1], finR[2], colHullWhite);
     DrawLineV(finL[1], finL[2], colRedTrim);
@@ -267,22 +335,22 @@ void Player_Draw(const Player *p) {
     DrawTriangle(noseRed[0], noseRed[1], noseRed[2], colRedTrim);
 
     /* 6. Glowing Amber/Orange Heatsink Vents (Left & Right Flanks) */
-    float ventPulse = 0.8f + 0.2f * sinf(GetTime() * 10.0f);
-    Color ventColor = ColorAlpha(colVentGlow, ventPulse);
-    Vector2 ventL1 = RP(-6, 2), ventL2 = RP(-6, 7);
-    Vector2 ventR1 = RP( 6, 2), ventR2 = RP( 6, 7);
-    DrawLineEx(ventL1, ventL2, 2.8f, ventColor);
-    DrawLineEx(ventR1, ventR2, 2.8f, ventColor);
-    DrawLineEx(ventL1, ventL2, 1.2f, colVentCore);
-    DrawLineEx(ventR1, ventR2, 1.2f, colVentCore);
+    float ventPulse = 0.85f + 0.15f * sinf(GetTime() * 14.0f) + p->boostAnim * 0.4f;
+    Color ventColor = ColorAlpha(colVentGlow, MIN(1.0f, ventPulse));
+    Vector2 ventL1 = RPB(-6, 2), ventL2 = RPB(-6, 7);
+    Vector2 ventR1 = RPB( 6, 2), ventR2 = RPB( 6, 7);
+    DrawLineEx(ventL1, ventL2, 3.2f + p->boostAnim * 1.2f, ventColor);
+    DrawLineEx(ventR1, ventR2, 3.2f + p->boostAnim * 1.2f, ventColor);
+    DrawLineEx(ventL1, ventL2, 1.4f, colVentCore);
+    DrawLineEx(ventR1, ventR2, 1.4f, colVentCore);
 
     /* 7. Glossy Cyan Cockpit Canopy with Specular Glint */
-    Vector2 cockpitPos = RP(0, -5);
-    DrawCircleV(cockpitPos, 5.0f, colDarkFrame);
-    DrawCircleV(cockpitPos, 4.0f, colCockpit);
+    Vector2 cockpitPos = RP(bank * 1.2f, -5);
+    DrawCircleV(cockpitPos, 5.2f, colDarkFrame);
+    DrawCircleV(cockpitPos, 4.2f, colCockpit);
     /* Specular glass reflection streak */
-    DrawLineV(RP(-1.5f, -7.0f), RP(1.5f, -4.5f), colCockpitGlint);
-    DrawPixelV(RP(0.5f, -6.5f), WHITE);
+    DrawLineV(RP(-1.5f + bank, -7.0f), RP(1.5f + bank, -4.5f), colCockpitGlint);
+    DrawPixelV(RP(0.5f + bank, -6.5f), WHITE);
 
     /* 8. Rear Cylindrical Engine Turbine Nozzle */
     Vector2 nozzlePos = RP(0, 13);
@@ -292,7 +360,7 @@ void Player_Draw(const Player *p) {
         p->rotation,
         colDarkFrame
     );
-    DrawCircleV(RP(0, 14), 2.8f, (Color){ 255, 140, 20, 255 });
+    DrawCircleV(RP(0, 14), 3.0f, (Color){ 255, 140, 20, 255 });
 
     /* 9. Upgraded Weapon Glow Indicator */
     if (p->weapon != WEAPON_SINGLE) {
@@ -310,6 +378,7 @@ void Player_Draw(const Player *p) {
     }
 
     #undef RP
+    #undef RPB
 }
 
 /* ── Combat ──────────────────────────────────────────── */

@@ -30,10 +30,12 @@
 /* ──────────────────────────────────────────────────────────
    Player Physics
 ────────────────────────────────────────────────────────── */
-#define PLAYER_ACCEL        320.0f
-#define PLAYER_MAX_SPEED    420.0f
-#define PLAYER_DAMPING      0.96f
-#define PLAYER_ROT_SPEED    200.0f  /* degrees per second */
+#define PLAYER_ACCEL        550.0f
+#define PLAYER_BOOST_ACCEL  950.0f
+#define PLAYER_MAX_SPEED    520.0f
+#define PLAYER_BOOST_SPEED  780.0f
+#define PLAYER_DAMPING      0.975f
+#define PLAYER_ROT_SPEED    340.0f  /* degrees per second — fast, agile dogfighter */
 #define PLAYER_RADIUS       18.0f
 #define PLAYER_MAX_HEALTH   100
 #define PLAYER_MAX_LIVES    3
@@ -42,21 +44,21 @@
 /* ──────────────────────────────────────────────────────────
    Weapons
 ────────────────────────────────────────────────────────── */
-#define MAX_PLAYER_BULLETS  64
-#define BULLET_SPEED        720.0f
+#define MAX_PLAYER_BULLETS  128
+#define BULLET_SPEED        820.0f
 #define BULLET_LIFETIME     2.0f
-#define BULLET_DAMAGE       10
-#define BULLET_COOLDOWN     0.18f   /* seconds between shots */
-#define BULLET_RADIUS       4.0f
+#define BULLET_DAMAGE       12
+#define BULLET_COOLDOWN     0.15f   /* seconds between shots */
+#define BULLET_RADIUS       4.5f
 
 /* ──────────────────────────────────────────────────────────
    Enemy Bullets
 ────────────────────────────────────────────────────────── */
 #define MAX_ENEMY_BULLETS   128
-#define ENEMY_BULLET_SPEED  340.0f
-#define ENEMY_BULLET_LIFE   3.5f
-#define ENEMY_BULLET_DAMAGE 12
-#define ENEMY_BULLET_RADIUS 5.0f
+#define ENEMY_BULLET_SPEED  250.0f  /* readable, dogfightable combat speed */
+#define ENEMY_BULLET_LIFE   3.8f
+#define ENEMY_BULLET_DAMAGE 10
+#define ENEMY_BULLET_RADIUS 4.5f
 
 /* ──────────────────────────────────────────────────────────
    Enemies

@@ -263,39 +263,83 @@ void Game_Update(GameContext *ctx, float dt) {
 
             /* Shoot */
             if (Player_TryShoot(&g_player, dt)) {
+                float rotRad = DEG2RAD(g_player.rotation);
+                float cosR = cosf(rotRad);
+                float sinR = sinf(rotRad);
                 Vector2 dir = AngleToDir(g_player.rotation);
-                /* Bullet origin slightly in front of ship */
-                Vector2 tip = { g_player.pos.x + dir.x * 22.0f,
-                                g_player.pos.y + dir.y * 22.0f };
+
+                /* Wingtip heavy autocannon hardpoints matching HK-01 concept art */
+                Vector2 gunL = { g_player.pos.x + (-19.0f)*cosR - (0.0f)*sinR,
+                                 g_player.pos.y + (-19.0f)*sinR + (0.0f)*cosR };
+                Vector2 gunR = { g_player.pos.x + ( 19.0f)*cosR - (0.0f)*sinR,
+                                 g_player.pos.y + ( 19.0f)*sinR + (0.0f)*cosR };
+                Vector2 tip  = { g_player.pos.x + dir.x * 22.0f,
+                                 g_player.pos.y + dir.y * 22.0f };
 
                 if (g_player.weapon == WEAPON_DOUBLE) {
-                    /* Two bullets offset perpendicular */
+                    /* Quad Cannons: Twin Wingtips + Twin Fuselage Sponsons */
                     float perpX = -dir.y, perpY = dir.x;
-                    Vector2 l = { tip.x - perpX * 7.0f, tip.y - perpY * 7.0f };
-                    Vector2 r = { tip.x + perpX * 7.0f, tip.y + perpY * 7.0f };
-                    Projectile_SpawnPlayer(&g_projectiles, l, dir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, r, dir, BULLET_DAMAGE);
+                    Vector2 midL = { tip.x - perpX * 6.0f, tip.y - perpY * 6.0f };
+                    Vector2 midR = { tip.x + perpX * 6.0f, tip.y + perpY * 6.0f };
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, dir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, dir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, midL, dir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, midR, dir, BULLET_DAMAGE);
+                    Particles_SpawnSparks(&g_particles, gunL, 3, (Color){ 0, 240, 255, 255 });
+                    Particles_SpawnSparks(&g_particles, gunR, 3, (Color){ 0, 240, 255, 255 });
                 } else if (g_player.weapon == WEAPON_SPREAD) {
-                    /* Three-way spread shot */
-                    Projectile_SpawnPlayer(&g_projectiles, tip, dir, BULLET_DAMAGE);
-                    Vector2 leftDir  = AngleToDir(g_player.rotation - 15.0f);
-                    Vector2 rightDir = AngleToDir(g_player.rotation + 15.0f);
-                    Projectile_SpawnPlayer(&g_projectiles, tip, leftDir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, tip, rightDir, BULLET_DAMAGE);
+                    /* 5-Way Starburst Array */
+                    Vector2 leftDir  = AngleToDir(g_player.rotation - 18.0f);
+                    Vector2 rightDir = AngleToDir(g_player.rotation + 18.0f);
+                    Vector2 wideLDir = AngleToDir(g_player.rotation - 32.0f);
+                    Vector2 wideRDir = AngleToDir(g_player.rotation + 32.0f);
+                    Projectile_SpawnPlayer(&g_projectiles, tip,  dir,      BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, leftDir,  BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, rightDir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, wideLDir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, wideRDir, BULLET_DAMAGE);
+                    Particles_SpawnSparks(&g_particles, tip,  4, (Color){ 255, 220,  0, 255 });
+                    Particles_SpawnSparks(&g_particles, gunL, 3, (Color){ 255, 220,  0, 255 });
+                    Particles_SpawnSparks(&g_particles, gunR, 3, (Color){ 255, 220,  0, 255 });
                 } else {
-                    Projectile_SpawnPlayer(&g_projectiles, tip, dir, BULLET_DAMAGE);
+                    /* WEAPON_SINGLE (Default): Twin Synchronized Heavy Wingtip Autocannons */
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, dir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, dir, BULLET_DAMAGE);
+                    Particles_SpawnSparks(&g_particles, gunL, 2, (Color){ 0, 220, 255, 255 });
+                    Particles_SpawnSparks(&g_particles, gunR, 2, (Color){ 0, 220, 255, 255 });
                 }
                 Audio_PlaySFX(&g_audio, SFX_SHOOT);
             }
 
-            /* Exhaust particles while thrusting */
-            if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
+            /* Exhaust & Nitro Particles (Flexing live at all times) */
+            {
                 Vector2 fwd = AngleToDir(g_player.rotation);
                 Vector2 exhaustPos = { g_player.pos.x - fwd.x * 14.0f,
                                        g_player.pos.y - fwd.y * 14.0f };
-                for (int i = 0; i < EXHAUST_PARTICLES_PER_FRAME; i++) {
-                    Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
-                                           (Color){60, 140, 255, 180});
+
+                if (g_player.isBoosting) {
+                    /* Hyper-Nitro Boost: Intense double exhaust plume & nitro sparks */
+                    for (int i = 0; i < EXHAUST_PARTICLES_PER_FRAME * 2; i++) {
+                        Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
+                                               (Color){ 0, 230, 255, 230 });
+                    }
+                    if (RandChance(0.40f)) {
+                        Particles_SpawnSparks(&g_particles, exhaustPos, 2, (Color){ 255, 170, 30, 255 });
+                    }
+                    /* Subtle cockpit throttle rumble */
+                    ctx->screenShake = CLAMP(ctx->screenShake + 0.18f, 0.0f, 1.8f);
+                } else if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
+                    /* Standard forward thrust */
+                    for (int i = 0; i < EXHAUST_PARTICLES_PER_FRAME; i++) {
+                        Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
+                                               (Color){ 40, 160, 255, 200 });
+                    }
+                } else {
+                    /* Idle engine flex: occasional trailing ion shimmer */
+                    if (RandChance(0.20f)) {
+                        Particles_SpawnExhaust(&g_particles, exhaustPos, fwd,
+                                               (Color){ 0, 180, 255, 110 });
+                    }
                 }
             }
 
@@ -507,18 +551,19 @@ void Game_Draw(GameContext *ctx) {
             unsigned char a = (unsigned char)(alpha * 200);
             unsigned char ta = (unsigned char)(alpha * 255);
             int hx = sw - 230, hy = 75;
-            DrawRectangleRounded((Rectangle){(float)hx - 10, (float)hy - 8, 220, 160},
+            DrawRectangleRounded((Rectangle){(float)hx - 10, (float)hy - 8, 220, 180},
                                  0.1f, 6, (Color){6, 6, 24, a});
-            DrawRectangleRoundedLines((Rectangle){(float)hx - 10, (float)hy - 8, 220, 160},
+            DrawRectangleRoundedLines((Rectangle){(float)hx - 10, (float)hy - 8, 220, 180},
                                       0.1f, 6, (Color){0, 150, 255, (unsigned char)(a / 2)});
             DrawText("MISSION CONTROLS", hx, hy,      11, (Color){255, 200, 0, ta});
-            DrawText("W / UP     Thrust",  hx, hy + 18, 13, (Color){0, 220, 255, ta});
-            DrawText("S / DOWN   Brake",   hx, hy + 36, 13, (Color){0, 220, 255, ta});
-            DrawText("A / D      Rotate",  hx, hy + 54, 13, (Color){0, 220, 255, ta});
-            DrawText("SPACE/CLICK Fire",   hx, hy + 72, 13, (Color){0, 220, 255, ta});
-            DrawText("ESC        Pause",   hx, hy + 90, 13, (Color){0, 220, 255, ta});
-            DrawText("F1         Toggle",  hx, hy + 108, 13, (Color){160, 160, 200, ta});
-            DrawText("Press F1 to hide",   hx, hy + 132, 11, (Color){120, 120, 160, (unsigned char)(ta / 2)});
+            DrawText("W / UP     Thrust / Nitro",  hx, hy + 18, 12, (Color){0, 220, 255, ta});
+            DrawText("SHIFT/RMB  Hyper-Boost",      hx, hy + 36, 12, (Color){0, 255, 180, ta});
+            DrawText("S / DOWN   Brake",           hx, hy + 54, 12, (Color){0, 220, 255, ta});
+            DrawText("A / D      Rotate / Bank",   hx, hy + 72, 12, (Color){0, 220, 255, ta});
+            DrawText("SPACE/LMB  Twin Cannons",    hx, hy + 90, 12, (Color){0, 220, 255, ta});
+            DrawText("ESC        Pause",           hx, hy + 108, 12, (Color){0, 220, 255, ta});
+            DrawText("F1         Toggle Hint",     hx, hy + 126, 12, (Color){160, 160, 200, ta});
+            DrawText("Press F1 to hide",           hx, hy + 150, 11, (Color){120, 120, 160, (unsigned char)(ta / 2)});
         }
 
     } else {

@@ -206,19 +206,19 @@ int Collision_Update(
         float nextInterval = 2.0f;
 
         if (e->type == ENEMY_SCOUT && e->fireTimer <= 0.0f) {
-            nextInterval = 1.9f + RandFloat(-0.2f, 0.3f);
+            nextInterval = 3.0f + RandFloat(-0.3f, 0.4f);
             shouldFire = 1;
         } else if (e->type == ENEMY_INTERCEPTOR && e->fireTimer <= 0.0f) {
-            nextInterval = 1.7f + RandFloat(-0.2f, 0.2f);
+            nextInterval = 2.8f + RandFloat(-0.2f, 0.4f);
             shouldFire = 1;
         } else if (e->type == ENEMY_TANK && e->fireTimer <= 0.0f) {
-            nextInterval = 2.2f + RandFloat(-0.2f, 0.3f);
+            nextInterval = 3.6f + RandFloat(-0.3f, 0.5f);
             shouldFire = 1;
         } else if (e->type == ENEMY_BOMBER && e->fireTimer <= 0.0f) {
-            nextInterval = BOMBER_FIRE_INTERVAL;
+            nextInterval = 3.8f + RandFloat(-0.2f, 0.4f);
             shouldFire = 1;
         } else if (e->type == ENEMY_BOSS && e->fireTimer <= 0.0f) {
-            nextInterval = BOSS_BULLET_INTERVAL * (e->bossPhase == 2 ? 0.55f : 1.0f);
+            nextInterval = 2.5f * (e->bossPhase == 2 ? 0.75f : 1.0f);
             shouldFire = 1;
         }
 
@@ -229,25 +229,25 @@ int Collision_Update(
             Audio_PlaySFX(audio, SFX_ENEMY_SHOOT);
 
             if (e->type == ENEMY_SCOUT) {
-                /* Fast red dart blaster */
-                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 390.0f, 4.0f,
+                /* Red pulse blaster — fair dogfight velocity */
+                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 230.0f, 4.0f,
                                         8, (Color){ 255, 60, 60, 255 });
             } else if (e->type == ENEMY_INTERCEPTOR) {
-                /* Twin red plasma cannons */
+                /* Twin red plasma cannons — staggered aim angle */
                 float baseAngle = RAD2DEG(atan2f(dir.x, -dir.y));
-                Vector2 d1 = AngleToDir(baseAngle - 8.0f);
-                Vector2 d2 = AngleToDir(baseAngle + 8.0f);
-                Projectile_SpawnEnemyEx(projectiles, e->pos, d1, 360.0f, 4.8f,
-                                        10, (Color){ 255, 40, 50, 255 });
-                Projectile_SpawnEnemyEx(projectiles, e->pos, d2, 360.0f, 4.8f,
-                                        10, (Color){ 255, 40, 50, 255 });
+                Vector2 d1 = AngleToDir(baseAngle - 7.0f);
+                Vector2 d2 = AngleToDir(baseAngle + 7.0f);
+                Projectile_SpawnEnemyEx(projectiles, e->pos, d1, 220.0f, 4.5f,
+                                        9, (Color){ 255, 40, 50, 255 });
+                Projectile_SpawnEnemyEx(projectiles, e->pos, d2, 220.0f, 4.5f,
+                                        9, (Color){ 255, 40, 50, 255 });
             } else if (e->type == ENEMY_TANK) {
-                /* Heavy turbolaser shell: high caliber, punchy red energy bolt */
-                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 290.0f, 7.5f,
-                                        18, (Color){ 255, 90, 20, 255 });
+                /* Heavy turbolaser shell: deliberate, punchy red energy bolt */
+                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 190.0f, 7.0f,
+                                        16, (Color){ 255, 90, 20, 255 });
             } else if (e->type == ENEMY_BOMBER) {
-                /* Long-range plasma torpedo */
-                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 260.0f, 6.5f,
+                /* Long-range plasma torpedo: slow moving heavy projectile */
+                Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 170.0f, 6.5f,
                                         14, (Color){ 255, 140, 20, 255 });
             } else if (e->type == ENEMY_BOSS) {
                 if (e->bossPhase == 2) {
@@ -255,15 +255,15 @@ int Collision_Update(
                     for (int k = -2; k <= 2; k++) {
                         float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 14.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
-                        Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 350.0f, 6.0f,
+                        Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 250.0f, 5.5f,
                                                 14, (Color){ 255, 30, 200, 255 });
                     }
                 } else {
                     /* Phase 1: aimed triple turbolasers */
                     for (int k = -1; k <= 1; k++) {
-                        float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 18.0f;
+                        float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 16.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
-                        Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 320.0f, 5.5f,
+                        Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 230.0f, 5.0f,
                                                 12, (Color){ 220, 30, 60, 255 });
                     }
                 }

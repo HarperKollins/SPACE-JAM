@@ -497,20 +497,20 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
              (Color){0, 150, 255, 160});
 
     /* Panel background */
-    int panW = 560, panH = 380;
+    int panW = 580, panH = 410;
     int panX = screenW / 2 - panW / 2;
-    int panY = (int)((float)screenH * 0.18f);
+    int panY = (int)((float)screenH * 0.16f);
     DrawRectangleRounded((Rectangle){(float)panX, (float)panY, (float)panW, (float)panH},
                          0.08f, 8, (Color){8, 8, 28, 200});
     DrawRectangleRoundedLines((Rectangle){(float)panX, (float)panY, (float)panW, (float)panH},
                                0.08f, 8, (Color){0, 100, 200, 140});
 
     /* Column layout: KEY on left, ACTION on right */
-    int col1 = panX + 30;          /* key label */
-    int col2 = panX + 210;         /* action label */
-    int rowH  = 36;
-    int startY = panY + 24;
-    int fs    = 18;
+    int col1 = panX + 28;          /* key label */
+    int col2 = panX + 230;         /* action label */
+    int rowH  = 32;
+    int startY = panY + 20;
+    int fs    = 17;
 
     Color keyCol    = (Color){0, 220, 255, 255};
     Color actCol    = (Color){200, 200, 220, 230};
@@ -518,29 +518,29 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     Color divCol    = (Color){0, 80, 160, 120};
 
     /* ── Movement section ── */
-    DrawText("MOVEMENT", col1, startY, 14, headCol);
-    DrawLine(col1, startY + 18, panX + panW - 30, startY + 18, divCol);
-    startY += 26;
+    DrawText("FLIGHT & PROPULSION", col1, startY, 14, headCol);
+    DrawLine(col1, startY + 18, panX + panW - 28, startY + 18, divCol);
+    startY += 24;
 
     struct { const char *key; const char *action; } rows[] = {
-        { "W  /  UP ARROW",    "Thrust forward"        },
-        { "S  /  DOWN ARROW",  "Brake / reverse"       },
-        { "A  /  LEFT ARROW",  "Rotate left"           },
-        { "D  /  RIGHT ARROW", "Rotate right"          },
+        { "W  /  UP ARROW",       "Thrust forward (Nitro)"  },
+        { "SHIFT  /  RMB",        "Hyper-Nitro Overdrive"   },
+        { "S  /  DOWN ARROW",     "Brake / reverse thrusters" },
+        { "A / D  (or ARROWS)",   "Rotate & 2.5D visual bank" },
     };
     for (int i = 0; i < 4; i++) {
         DrawText(rows[i].key,    col1, startY + i * rowH, fs, keyCol);
         DrawText(rows[i].action, col2, startY + i * rowH, fs, actCol);
     }
-    startY += 4 * rowH + 10;
+    startY += 4 * rowH + 8;
 
     /* ── Combat section ── */
-    DrawText("COMBAT", col1, startY, 14, headCol);
-    DrawLine(col1, startY + 18, panX + panW - 30, startY + 18, divCol);
-    startY += 26;
+    DrawText("COMBAT SYSTEMS", col1, startY, 14, headCol);
+    DrawLine(col1, startY + 18, panX + panW - 28, startY + 18, divCol);
+    startY += 24;
 
     struct { const char *key; const char *action; } combat[] = {
-        { "SPACE / LEFT CLICK",  "Fire weapons"  },
+        { "SPACE / LEFT CLICK",  "Twin Wingtip Cannons" },
         { "ESC",                 "Pause / leave game"   },
         { "F1",                  "Toggle controls hint" },
     };
