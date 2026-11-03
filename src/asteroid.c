@@ -7,7 +7,7 @@
 #include <math.h>
 #include <string.h>
 
-/* ─── Init ───────────────────────────────────────────── */
+/* --- Init --------------------------------------------- */
 
 static void InitAsteroidShape(Asteroid *a) {
     for (int i = 0; i < 8; i++) {
@@ -42,7 +42,7 @@ static void SetupAsteroidBySize(Asteroid *a, AsteroidSize size) {
     InitAsteroidShape(a);
 }
 
-/* ─── Pool management ────────────────────────────────── */
+/* --- Pool management ---------------------------------- */
 
 void Asteroids_Init(AsteroidField *af) {
     memset(af, 0, sizeof(*af));
@@ -112,7 +112,7 @@ int Asteroid_Spawn(AsteroidField *af, AsteroidSize size, int screenW, int screen
     return 1;
 }
 
-/* ─── Update ─────────────────────────────────────────── */
+/* --- Update ------------------------------------------- */
 
 void Asteroids_Update(AsteroidField *af, float dt, int screenW, int screenH, int wave) {
     /* Auto-spawn */
@@ -147,7 +147,7 @@ void Asteroids_Update(AsteroidField *af, float dt, int screenW, int screenH, int
     }
 }
 
-/* ─── Draw ───────────────────────────────────────────── */
+/* --- Draw --------------------------------------------- */
 
 static void DrawAsteroid(const Asteroid *a) {
     int sides = 8;
@@ -206,7 +206,7 @@ void Asteroids_Draw(const AsteroidField *af) {
     }
 }
 
-/* ─── Hit / Split ────────────────────────────────────── */
+/* --- Hit / Split -------------------------------------- */
 
 int Asteroid_Hit(AsteroidField *af, int index, int damage,
                  int screenW, int screenH) {
@@ -217,7 +217,7 @@ int Asteroid_Hit(AsteroidField *af, int index, int damage,
     if (a->health > 0) return 0;
 
     int score = 0;
-    /* Split large → 2 medium, medium → 2 small */
+    /* Split large   2 medium, medium   2 small */
     if (a->size == ASTEROID_LARGE) {
         score = ASTEROID_LARGE_SCORE;
         for (int i = 0; i < 2; i++) {

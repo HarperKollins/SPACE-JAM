@@ -26,7 +26,7 @@ void HighScore_Load(HighScoreTable *table) {
     table->magic = HIGHSCORE_MAGIC;
 
     FILE *f = fopen(HIGHSCORE_FILE, "rb");
-    if (!f) return; /* no file yet — start fresh */
+    if (!f) return; /* no file yet - start fresh */
 
     HighScoreTable tmp;
     size_t read = fread(&tmp, 1, sizeof(tmp), f);
@@ -39,7 +39,7 @@ void HighScore_Load(HighScoreTable *table) {
     /* Validate checksum */
     uint32_t expected = ComputeChecksum(&tmp);
     if (tmp.checksum != expected) {
-        fprintf(stderr, "[highscore] Checksum mismatch — starting fresh.\n");
+        fprintf(stderr, "[highscore] Checksum mismatch - starting fresh.\n");
         return;
     }
 

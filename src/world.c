@@ -161,9 +161,9 @@ void Starfield_Update(Starfield *sf, float dt, int screenW, int screenH) {
     }
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    PLANETARY WORLD RENDERING
-══════════════════════════════════════════════════════ */
+                                                       */
 
 /* Sector 1: Terra Novus (Cradle World in Flames) */
 static void DrawTerraNovus(int screenW, int screenH, float time) {
@@ -316,9 +316,9 @@ static void DrawSynodCitadel(int screenW, int screenH, float time) {
     DrawCircleV(citC,  8.0f * corePulse, (Color){ 230, 200, 255, 255 });
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    MAIN STARFIELD DRAW WITH WARP JUMP EFFECT
-══════════════════════════════════════════════════════ */
+                                                       */
 
 void Starfield_Draw(const Starfield *sf) {
     int sw = GetScreenWidth();

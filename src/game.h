@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "config.h"
 
-/* ── Game States ─────────────────────────────────────── */
+/* -- Game States --------------------------------------- */
 typedef enum {
     STATE_MAIN_MENU = 0,
     STATE_PROLOGUE,
@@ -23,7 +23,7 @@ typedef enum {
     STATE_COUNT
 } GameState;
 
-/* ── Settings ────────────────────────────────────────── */
+/* -- Settings ------------------------------------------ */
 typedef struct {
     float masterVolume;
     float musicVolume;
@@ -35,7 +35,7 @@ typedef struct {
     int   screenHeight;
 } GameSettings;
 
-/* ── Game Context ────────────────────────────────────── */
+/* -- Game Context -------------------------------------- */
 typedef struct {
     GameState  state;
     GameState  prevState;
@@ -55,7 +55,7 @@ typedef struct {
     GameSettings settings;
 } GameContext;
 
-/* ── Lifecycle ───────────────────────────────────────── */
+/* -- Lifecycle ----------------------------------------- */
 void Game_Init(GameContext *ctx);
 void Game_Update(GameContext *ctx, float dt);
 void Game_Draw(GameContext *ctx);

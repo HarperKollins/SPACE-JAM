@@ -27,7 +27,7 @@ int Collision_Update(
 {
     int scoreEarned = 0;
 
-    /* ─── Player bullets vs enemies ─────────────────── */
+    /* --- Player bullets vs enemies ------------------- */
     for (int bi = 0; bi < MAX_PLAYER_BULLETS; bi++) {
         Projectile *b = &projectiles->player[bi];
         if (!b->active) continue;
@@ -88,7 +88,7 @@ int Collision_Update(
         }
     }
 
-    /* ─── Player bullets vs asteroids ──────────────── */
+    /* --- Player bullets vs asteroids ---------------- */
     for (int bi = 0; bi < MAX_PLAYER_BULLETS; bi++) {
         Projectile *b = &projectiles->player[bi];
         if (!b->active) continue;
@@ -125,7 +125,7 @@ int Collision_Update(
         }
     }
 
-    /* ─── Enemy bullets vs player ───────────────────── */
+    /* --- Enemy bullets vs player --------------------- */
     if (Player_IsAlive(player) && player->iFrameTimer <= 0.0f) {
         for (int bi = 0; bi < MAX_ENEMY_BULLETS; bi++) {
             Projectile *b = &projectiles->enemy[bi];
@@ -141,7 +141,7 @@ int Collision_Update(
         }
     }
 
-    /* ─── Enemies vs player (deflector repulsorfields) ───────────────── */
+    /* --- Enemies vs player (deflector repulsorfields) ----------------- */
     /* Enemy ships do NOT deal hull ramming damage. If craft get close,
        their repulsorfields gently deflect each other away */
     if (Player_IsAlive(player)) {
@@ -163,7 +163,7 @@ int Collision_Update(
         }
     }
 
-    /* ─── Asteroids vs player ───────────────────────── */
+    /* --- Asteroids vs player ------------------------- */
     if (Player_IsAlive(player) && player->iFrameTimer <= 0.0f) {
         for (int ai = 0; ai < MAX_ASTEROIDS; ai++) {
             Asteroid *a = &asteroids->asteroids[ai];
@@ -182,7 +182,7 @@ int Collision_Update(
         }
     }
 
-    /* ─── Powerups vs player ────────────────────────── */
+    /* --- Powerups vs player -------------------------- */
     if (Player_IsAlive(player)) {
         for (int pi = 0; pi < MAX_POWERUPS; pi++) {
             Powerup *pu = &powerups->powerups[pi];
@@ -197,7 +197,7 @@ int Collision_Update(
         }
     }
 
-    /* ─── Enemy weapon fire (all craft engage with ranged weapons) ─── */
+    /* --- Enemy weapon fire (all craft engage with ranged weapons) --- */
     for (int ei = 0; ei < MAX_ENEMIES; ei++) {
         Enemy *e = &enemies->enemies[ei];
         if (!e->active || e->state == ESTATE_DYING) continue;
@@ -229,11 +229,11 @@ int Collision_Update(
             Audio_PlaySFX(audio, SFX_ENEMY_SHOOT);
 
             if (e->type == ENEMY_SCOUT) {
-                /* Cyan needle pulse blaster — swift and precise */
+                /* Cyan needle pulse blaster - swift and precise */
                 Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 230.0f, 4.0f,
                                         8, (Color){ 0, 230, 220, 255 });
             } else if (e->type == ENEMY_INTERCEPTOR) {
-                /* Twin crimson plasma cannons — staggered aim angle */
+                /* Twin crimson plasma cannons - staggered aim angle */
                 float baseAngle = RAD2DEG(atan2f(dir.x, -dir.y));
                 Vector2 d1 = AngleToDir(baseAngle - 7.0f);
                 Vector2 d2 = AngleToDir(baseAngle + 7.0f);

@@ -47,7 +47,7 @@ typedef struct {
   float invincibleTimer;
 
   /* Visual */
-  float thrustAnim; /* 0â€“1, drives base engine glow (always active/flexing) */
+  float thrustAnim; /* 0-1, drives base engine glow (always active/flexing) */
   float boostAnim;  /* 0-1, hyper-nitro afterburner overdrive */
   float bankAngle;  /* -1.0 to +1.0, 3D visual roll when turning */
   float flashTimer; /* hit flash */

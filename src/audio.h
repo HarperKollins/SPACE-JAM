@@ -2,7 +2,7 @@
  * audio.h - Audio management wrapper
  *
  * All sounds are loaded at startup. Missing files produce a warning but
- * do NOT crash the game — every function checks for valid handles before use.
+ * do NOT crash the game - every function checks for valid handles before use.
  */
 #ifndef SPACEJAM_AUDIO_H
 #define SPACEJAM_AUDIO_H

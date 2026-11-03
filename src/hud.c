@@ -73,11 +73,11 @@ void HUD_DrawMedalPopup(int medalId, float timer, int screenW) {
 
 void HUD_Draw(const GameContext *ctx, const Player *player,
                const EnemyPool *enemies, int screenW, int screenH) {
-    /* ── Top Bar: Glassmorphic Tactical Command Frame ── */
+    /* -- Top Bar: Glassmorphic Tactical Command Frame -- */
     DrawRectangle(0, 0, screenW, 46, (Color){ 6, 10, 20, 200 });
     DrawLine(0, 46, screenW, 46, (Color){ 0, 180, 255, 120 });
 
-    /* ── Top Left: Tactical Sector Directive ── */
+    /* -- Top Left: Tactical Sector Directive -- */
     int sectorIdx = (ctx->wave <= 3) ? 0 : (ctx->wave <= 6) ? 1 : (ctx->wave <= 9) ? 2 : 3;
     const char *secNames[] = { "TERRA NOVUS", "SOLAR CORONA", "ICE RINGS OF XYLOS", "SYNOD CITADEL" };
     const char *secDirectives[] = {
@@ -92,7 +92,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
     snprintf(dirBuf, sizeof(dirBuf), "SECTOR %d: %s // %s", sectorIdx + 1, secNames[sectorIdx], secDirectives[sectorIdx]);
     DrawText(dirBuf, 32, 16, 12, (Color){ 0, 240, 255, 230 });
 
-    /* ── Top Center: Score & High Score ── */
+    /* -- Top Center: Score & High Score -- */
     char buf[64];
     snprintf(buf, sizeof(buf), "%06d", ctx->score);
     int scW = MeasureText(buf, 24);
@@ -102,7 +102,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
     snprintf(buf, sizeof(buf), "HI: %06d", ctx->highScore);
     DrawText(buf, screenW / 2 + scW / 2 + 18, 18, 11, (Color){ 100, 180, 220, 180 });
 
-    /* ── Top Right: Wave Counter & Elimination Meter ── */
+    /* -- Top Right: Wave Counter & Elimination Meter -- */
     snprintf(buf, sizeof(buf), "WAVE %d", ctx->wave);
     int ww = MeasureText(buf, 18);
     DrawText(buf, screenW - ww - 240, 14, 18, (Color){ 0, 220, 255, 255 });
@@ -118,7 +118,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
     DrawText("[F1] HELP", screenW - 140, 16, 11, (Color){ 140, 160, 200, 190 });
     DrawText("[ESC] PAUSE", screenW - 74, 16, 11, (Color){ 140, 160, 200, 190 });
 
-    /* ── Bottom Left: Armor / Hull & Kinetic Shield Gauges ── */
+    /* -- Bottom Left: Armor / Hull & Kinetic Shield Gauges -- */
     int barW = 210, barH = 14;
     int barX = 22;
     int barY = screenH - 34;
@@ -157,7 +157,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
         DrawTriangle((Vector2){ lx, ly - 6 }, (Vector2){ lx - 5, ly + 5 }, (Vector2){ lx + 5, ly + 5 }, (Color){ 0, 220, 255, 240 });
     }
 
-    /* ── Bottom Center: Tactical 360-Degree Mini-Radar Scanner ── */
+    /* -- Bottom Center: Tactical 360-Degree Mini-Radar Scanner -- */
     float radarRadius = 42.0f;
     Vector2 radarCenter = { (float)screenW * 0.5f, (float)screenH - 52.0f };
 
@@ -196,7 +196,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
     }
     DrawText("RADAR", (int)radarCenter.x - 14, (int)radarCenter.y + (int)radarRadius + 3, 9, (Color){ 0, 180, 255, 180 });
 
-    /* ── Active power-ups row ── */
+    /* -- Active power-ups row -- */
     int puY = screenH - 72;
     int puX = screenW - 14;
 
@@ -230,7 +230,7 @@ void HUD_Draw(const GameContext *ctx, const Player *player,
         DrawText(buf, puX - tw, puY, 11, (Color){255, 230, 40, 230});
     }
 
-    /* ── Boss bar ── */
+    /* -- Boss bar -- */
     int bossIdx = Enemies_FindBoss(enemies);
     if (bossIdx >= 0) {
         HUD_DrawBossBar(&enemies->enemies[bossIdx], ctx->wave, screenW, screenH);

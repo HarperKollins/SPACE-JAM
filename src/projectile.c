@@ -42,7 +42,7 @@ void Projectiles_Update(ProjectilePool *pool, float dt, int screenW, int screenH
 }
 
 void Projectiles_Draw(const ProjectilePool *pool) {
-    /* Player bullets — neon cyan laser */
+    /* Player bullets - neon cyan laser */
     for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
         const Projectile *b = &pool->player[i];
         if (!b->active) continue;
@@ -56,7 +56,7 @@ void Projectiles_Draw(const ProjectilePool *pool) {
         DrawCircleV(b->pos, b->radius * 2.0f, (Color){0, 180, 255, 60});
     }
 
-    /* Enemy bullets — orange/red */
+    /* Enemy bullets - orange/red */
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Projectile *b = &pool->enemy[i];
         if (!b->active) continue;

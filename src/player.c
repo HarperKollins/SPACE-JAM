@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <math.h>
 
-/* â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*        Init                                                                                                                                            */
 
 static Texture2D LoadPlayerTextureWithFallback(const char *relPath) {
     char buf[512];
@@ -83,7 +83,7 @@ void Player_SetShipTier(Player *p, ShipTier tier) {
     p->shipTier = tier;
 }
 
-/* â”€â”€ Input & Physics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*        Input & Physics                                                                                                           */
 
 void Player_Update(Player *p, float dt, int screenW, int screenH) {
     if (p->dead) {
@@ -91,7 +91,7 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
         return;
     }
 
-    /* â”€â”€ Rotation & 2.5D Visual Banking â”€â”€ */
+    /*        Rotation & 2.5D Visual Banking        */
     float rot = 0.0f;
     float targetBank = 0.0f;
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
@@ -107,7 +107,7 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
     /* Smoothly interpolate visual bank angle for snappy 2.5D roll */
     p->bankAngle += (targetBank - p->bankAngle) * MIN(1.0f, dt * 12.0f);
 
-    /* â”€â”€ Thrust & Hyper-Nitro Afterburner â”€â”€ */
+    /*        Thrust & Hyper-Nitro Afterburner        */
     Vector2 forward = AngleToDir(p->rotation);
     int thrustForward = (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP));
     int hyperNitro    = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT) ||
@@ -134,29 +134,29 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
         p->vel.y -= forward.y * accel * 0.55f * dt;
     }
 
-    /* â”€â”€ Speed cap â”€â”€ */
+    /*        Speed cap        */
     float speed = Vec2Len(p->vel);
     if (speed > maxSpeed) {
         p->vel = Vec2Scale(Vec2Norm(p->vel), maxSpeed);
     }
 
-    /* â”€â”€ Damping (frame-rate independent) â”€â”€ */
+    /*        Damping (frame-rate independent)        */
     float damping = powf(PLAYER_DAMPING, dt * 60.0f);
     p->vel.x *= damping;
     p->vel.y *= damping;
 
-    /* â”€â”€ Move â”€â”€ */
+    /*        Move        */
     p->pos.x += p->vel.x * dt;
     p->pos.y += p->vel.y * dt;
 
-    /* â”€â”€ Screen boundaries (wrap) â”€â”€ */
+    /*        Screen boundaries (wrap)        */
     float margin = PLAYER_RADIUS;
     if (p->pos.x < -margin)          p->pos.x = (float)screenW + margin;
     if (p->pos.x > screenW + margin) p->pos.x = -margin;
     if (p->pos.y < -margin)          p->pos.y = (float)screenH + margin;
     if (p->pos.y > screenH + margin) p->pos.y = -margin;
 
-    /* â”€â”€ Timers â”€â”€ */
+    /*        Timers        */
     if (p->iFrameTimer > 0.0f)    p->iFrameTimer    -= dt;
     if (p->flashTimer  > 0.0f)    p->flashTimer     -= dt;
     if (p->rapidFireTimer > 0.0f) p->rapidFireTimer -= dt;
@@ -171,7 +171,7 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
     if (p->invincibleTimer > 0.0f) p->invincibleTimer -= dt;
     if (p->fireCooldown    > 0.0f) p->fireCooldown    -= dt;
 
-    /* â”€â”€ Always-Active Nitro Flex Animation â”€â”€ */
+    /*        Always-Active Nitro Flex Animation        */
     /* Base engine is ALWAYS flexing with vivid plasma and hot core */
     float targetThrust = thrusting ? 1.0f : 0.42f;
     float thrustRate = thrusting ? 14.0f : 6.0f;
@@ -181,7 +181,7 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
     float targetBoost = p->isBoosting ? 1.0f : 0.0f;
     p->boostAnim += (targetBoost - p->boostAnim) * MIN(1.0f, dt * 14.0f);
 
-    /* â”€â”€ Weapon upgrade expiry â”€â”€ */
+    /*        Weapon upgrade expiry        */
     if (p->rapidFireTimer <= 0.0f && p->doubleShotTimer <= 0.0f && p->spreadShotTimer <= 0.0f) {
         p->weapon = WEAPON_SINGLE;
     } else if (p->rapidFireTimer > 0.0f) {
@@ -193,7 +193,7 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
     }
 }
 
-/* â”€â”€ Drawing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*        Drawing                                                                                                                                   */
 
 static void DrawEngineGlow(Vector2 pos, float rotation, float thrust, float boost) {
     Vector2 forward = AngleToDir(rotation);
@@ -284,7 +284,7 @@ static inline Vector2 RotateBankPoint(Vector2 pos, float lx, float ly, float cos
 void Player_Draw(const Player *p) {
     if (p->dead) return;
 
-    /* Invulnerability flash â€” blink every 0.1s */
+    /* Invulnerability flash     blink every 0.1s */
     if (p->iFrameTimer > 0.0f) {
         int blink = (int)(p->iFrameTimer * 10.0f) % 2;
         if (blink) return;
@@ -334,7 +334,7 @@ void Player_Draw(const Player *p) {
         return;
     }
 
-    /* ── HK-01 Interceptor Top-Down Pixel-Style Rendering with 2.5D Banking ── */
+    /* -- HK-01 Interceptor Top-Down Pixel-Style Rendering with 2.5D Banking -- */
     float rot = DEG2RAD(p->rotation);
     float cosR = cosf(rot);
     float sinR = sinf(rot);
@@ -484,7 +484,7 @@ void Player_Draw(const Player *p) {
     #undef RPB
 }
 
-/* â”€â”€ Combat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*        Combat                                                                                                                                      */
 
 void Player_TakeDamage(Player *p, int dmg) {
     if (p->dead) return;
@@ -508,7 +508,7 @@ void Player_TakeDamage(Player *p, int dmg) {
         p->health = 0;
         p->lives--;
         if (p->lives > 0) {
-            /* Respawn â€” reset health but keep lives */
+            /* Respawn     reset health but keep lives */
             p->health = PLAYER_MAX_HEALTH;
             p->iFrameTimer = 3.0f; /* longer grace period on respawn */
             p->vel = (Vector2){0, 0};

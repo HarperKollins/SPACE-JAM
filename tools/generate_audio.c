@@ -68,9 +68,9 @@ static inline float ClampFloat(float v, float mn, float mx) {
     return v;
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    1. SOUND EFFECTS SYNTHESIS
-══════════════════════════════════════════════════════ */
+                                                       */
 
 /* Player Laser Pew: Rapid high-to-low laser sweep with harmonic edge */
 static void GenSfxShoot(const char *filename) {
@@ -375,9 +375,9 @@ static void GenSfxGameOver(const char *filename) {
     free(buf);
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    2. MUSIC TRACK SYNTHESIS
-══════════════════════════════════════════════════════ */
+                                                       */
 
 /* Intro / Prologue Space Opera Fanfare
    Epic, majestic symphonic synth in G minor / Bb major.
@@ -551,7 +551,7 @@ static void GenMusicBattle(const char *filename) {
         int progIdx = barIdx / 2;
         if (progIdx > 5) progIdx = 5;
 
-        /* ── 1. DRUMS ── */
+        /* -- 1. DRUMS -- */
         float beatFrac = fmodf(curBeat, 1.0f);
         int beatInBar = (int)curBeat % 4;
         float kick = 0.0f;
@@ -584,7 +584,7 @@ static void GenMusicBattle(const char *filename) {
             hihat = RndNoise() * expf(-sixteenthFrac * 120.0f) * 0.18f;
         }
 
-        /* ── 2. DRIVING 16TH-NOTE BASSLINE ── */
+        /* -- 2. DRIVING 16TH-NOTE BASSLINE -- */
         int sixteenthIdx = (int)(t / sixteenthDur);
         float bassNoteFrac = fmodf(t, sixteenthDur);
         float bassFreq = rootFreqs[progIdx];
@@ -596,7 +596,7 @@ static void GenMusicBattle(const char *filename) {
         float bassEnv = expf(-bassNoteFrac * 18.0f);
         float bass = (bassSaw * 0.6f + sinf(phBass) * 0.4f) * bassEnv * 0.42f;
 
-        /* ── 3. COSMIC SYNTH ARPEGGIO ── */
+        /* -- 3. COSMIC SYNTH ARPEGGIO -- */
         int arpIdx = sixteenthIdx % 4;
         float arpFreq = chordArp[progIdx][arpIdx];
         phArp += 2.0f * (float)PI * arpFreq / SAMPLE_RATE;
@@ -604,7 +604,7 @@ static void GenMusicBattle(const char *filename) {
         float arpEnv = expf(-bassNoteFrac * 14.0f);
         float arp = arpSquare * arpEnv * 0.16f;
 
-        /* ── 4. DOGFIGHT LEAD SYNTH ── */
+        /* -- 4. DOGFIGHT LEAD SYNTH -- */
         float lead = 0.0f;
         for (int m = 0; m < leadCount; m++) {
             float noteStartSec = leadRiff[m].beat * beatDur;

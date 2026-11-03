@@ -8,13 +8,13 @@
 #include <stdint.h>
 #include "raylib.h"
 
-/* ── Numeric helpers ──────────────────────────────────── */
+/* -- Numeric helpers ------------------------------------ */
 #define MIN(a, b)        ((a) < (b) ? (a) : (b))
 #define MAX(a, b)        ((a) > (b) ? (a) : (b))
 #define CLAMP(v, lo, hi) ((v) < (lo) ? (lo) : (v) > (hi) ? (hi) : (v))
 #define ABS(a)           ((a) < 0 ? -(a) : (a))
 
-/* ── Angle & Degree / Radian conversion ─────────────── */
+/* -- Angle & Degree / Radian conversion --------------- */
 /* In standard raylib, DEG2RAD and RAD2DEG are constant multipliers:
    e.g. angle_rad = angle_deg * DEG2RAD.
    To avoid breaking raylib expressions while providing function-style conversions,
@@ -38,18 +38,18 @@ static inline float RadToDeg(float rad) {
 #endif
 #define RAD2DEG(r) RadToDeg(r)
 
-/* ── Random helpers ───────────────────────────────────── */
+/* -- Random helpers ------------------------------------- */
 /* Returns float in [lo, hi] */
 static inline float RandFloat(float lo, float hi) {
     return lo + (float)GetRandomValue(0, 10000) / 10000.0f * (hi - lo);
 }
 
-/* Returns 1 with probability p (0.0–1.0) */
+/* Returns 1 with probability p (0.0 - 1.0) */
 static inline int RandChance(float p) {
     return (float)GetRandomValue(0, 10000) / 10000.0f < p;
 }
 
-/* ── Vector math ──────────────────────────────────────── */
+/* -- Vector math ---------------------------------------- */
 static inline Vector2 Vec2Add(Vector2 a, Vector2 b) {
     return (Vector2){ a.x + b.x, a.y + b.y };
 }
@@ -80,8 +80,8 @@ static inline Vector2 AngleToDir(float deg) {
     return (Vector2){ sinf(rad), -cosf(rad) };
 }
 
-/* ── Color helpers ────────────────────────────────────── */
-/* Note: ColorAlpha and ColorLerp are provided by raylib 6.x — no redefinition needed. */
+/* -- Color helpers -------------------------------------- */
+/* Note: ColorAlpha and ColorLerp are provided by raylib 6.x - no redefinition needed. */
 /* Use raylib's ColorAlpha(color, alpha) and ColorLerp(c1, c2, factor) directly.      */
 
 #endif /* SPACEJAM_UTILS_H */

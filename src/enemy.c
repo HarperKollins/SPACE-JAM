@@ -8,7 +8,7 @@
 #include <math.h>
 #include <string.h>
 
-/* â”€â”€â”€ Type metadata lookup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*           Type metadata lookup                                                                                         */
 typedef struct { float speed; int health; float radius; int score; } EnemyMeta;
 
 static const EnemyMeta kMeta[ENEMY_TYPE_COUNT] = {
@@ -84,7 +84,7 @@ static int FindFreeEnemy(EnemyPool *pool) {
     return -1;
 }
 
-/* â”€â”€â”€ Spawn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*           Spawn                                                                                                                                      */
 
 static void InitEnemy(Enemy *e, EnemyType type, Vector2 pos) {
     memset(e, 0, sizeof(*e));
@@ -174,7 +174,7 @@ int Enemies_FindBoss(const EnemyPool *pool) {
     return -1;
 }
 
-/* â”€â”€â”€ Damage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*           Damage                                                                                                                                   */
 
 void Enemy_TakeDamage(Enemy *e, int dmg) {
     e->health -= dmg;
@@ -185,7 +185,7 @@ void Enemy_TakeDamage(Enemy *e, int dmg) {
     }
 }
 
-/* â”€â”€â”€ AI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*           AI helpers                                                                                                                       */
 
 static void ScoutAI(Enemy *e, Vector2 playerPos, float dt) {
     /* Scouts (Synod Dagger Interceptors): Fast dogfighters that keep standoff
@@ -297,11 +297,11 @@ static void BomberAI(Enemy *e, Vector2 playerPos, float dt) {
 
     Vector2 dir = Vec2Norm(Vec2Sub(playerPos, e->pos));
     if (dist < prefDist - 40.0f) {
-        /* Too close â€” retreat */
+        /* Too close     retreat */
         e->vel.x -= dir.x * BOMBER_SPEED * dt;
         e->vel.y -= dir.y * BOMBER_SPEED * dt;
     } else if (dist > prefDist + 40.0f) {
-        /* Too far â€” approach */
+        /* Too far     approach */
         e->vel.x += dir.x * BOMBER_SPEED * dt;
         e->vel.y += dir.y * BOMBER_SPEED * dt;
     } else {
@@ -348,7 +348,7 @@ static void BossAI(Enemy *e, Vector2 playerPos, int screenW, int screenH, float 
     e->rotation += diff * MIN(1.0f, dt * 2.0f);
 }
 
-/* â”€â”€â”€ Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*           Update                                                                                                                                   */
 
 void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
                     int screenW, int screenH) {
@@ -415,7 +415,7 @@ void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
     }
 }
 
-/* â”€â”€â”€ Drawing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*           Drawing                                                                                                                                */
 
 /* Diverse Faction Palettes: Eliminates visual monotony */
 static const Color kHullDark     = {  32,  38,  48, 255 }; /* Heavy battleship steel */
@@ -441,7 +441,7 @@ static const Color kSynodRedDark   = { 140,  15,  25, 255 };
 static const Color kSynodRedGlow   = { 255,  60,  60, 255 };
 
 static void DrawScout(const Enemy *e) {
-    /* Synod "Dagger" Recon Interceptor â€” Graphite & Electric Cyan */
+    /* Synod "Dagger" Recon Interceptor     Graphite & Electric Cyan */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -476,7 +476,7 @@ static void DrawScout(const Enemy *e) {
 }
 
 static void DrawInterceptor(const Enemy *e) {
-    /* Synod "Jackal" Heavy Fighter â€” Imperial Crimson & Gold */
+    /* Synod "Jackal" Heavy Fighter     Imperial Crimson & Gold */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -506,7 +506,7 @@ static void DrawInterceptor(const Enemy *e) {
 }
 
 static void DrawTank(const Enemy *e) {
-    /* Synod "Bulwark" Ironclad â€” Gunmetal & Industrial Hazard Amber */
+    /* Synod "Bulwark" Ironclad     Gunmetal & Industrial Hazard Amber */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -540,7 +540,7 @@ static void DrawTank(const Enemy *e) {
 }
 
 static void DrawBomber(const Enemy *e) {
-    /* Synod "Goliath" Siege Platform â€” Deep Cobalt & Acid Plasma Emerald */
+    /* Synod "Goliath" Siege Platform     Deep Cobalt & Acid Plasma Emerald */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -573,7 +573,7 @@ static void DrawBomber(const Enemy *e) {
 }
 
 static void DrawCivilianShuttle(const Enemy *e) {
-    /* Colonial Evacuation Shuttle â€” White & Humanitarian Blue */
+    /* Colonial Evacuation Shuttle     White & Humanitarian Blue */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -605,7 +605,7 @@ static void DrawCivilianShuttle(const Enemy *e) {
 }
 
 static void DrawBoss(const Enemy *e) {
-    /* Synod Dreadnought "Vindicator" â€” Monolithic Star Destroyer Capital Ship */
+    /* Synod Dreadnought "Vindicator"     Monolithic Star Destroyer Capital Ship */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }

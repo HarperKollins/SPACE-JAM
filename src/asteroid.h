@@ -24,7 +24,7 @@ typedef struct {
     int          health;
     int          active;
     /* Polygon shape - 8 vertices offset from center */
-    float        shapeOffsets[8]; /* radial multipliers 0.7–1.3 */
+    float        shapeOffsets[8]; /* radial multipliers 0.7 - 1.3 */
     Color        color;
     Color        colorEdge;
 } Asteroid;

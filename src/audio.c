@@ -72,7 +72,7 @@ static const char *ResolveAssetPath(const char *path, char *buf, size_t bufSize)
     return path;
 }
 
-/* ── Procedural In-Memory Fallback Synthesis ─────────── */
+/* -- Procedural In-Memory Fallback Synthesis ----------- */
 static Sound SynthesizeFallbackSFX(SfxId id) {
     unsigned int sampleRate = 44100;
     float dur = 0.15f;

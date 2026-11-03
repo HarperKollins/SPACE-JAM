@@ -32,7 +32,7 @@ int main(void) {
     GameContext ctx;
     Game_Init(&ctx);
 
-    /* ── Main Loop ──────────────────────────────────── */
+    /* -- Main Loop ------------------------------------ */
     while (!WindowShouldClose() && ctx.running) {
         float dt = GetFrameTime();
 

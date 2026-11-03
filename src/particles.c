@@ -5,7 +5,7 @@
 #include "utils.h"
 #include <math.h>
 
-/* ── Pool management ─────────────────────────────────── */
+/* -- Pool management ----------------------------------- */
 
 void Particles_Init(ParticleSystem *ps) {
     for (int i = 0; i < MAX_PARTICLES; i++) ps->particles[i].active = 0;
@@ -32,7 +32,7 @@ static Particle *AllocParticle(ParticleSystem *ps) {
     return &ps->particles[idx];
 }
 
-/* ── Update & Draw ────────────────────────────────────── */
+/* -- Update & Draw -------------------------------------- */
 
 void Particles_Update(ParticleSystem *ps, float dt) {
     ps->count = 0;
@@ -72,7 +72,7 @@ void Particles_Draw(const ParticleSystem *ps) {
     }
 }
 
-/* ── Emitters ────────────────────────────────────────── */
+/* -- Emitters ------------------------------------------ */
 
 void Particles_SpawnExplosion(ParticleSystem *ps, Vector2 pos, float radius,
                               Color base, int count) {

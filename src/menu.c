@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ── Helper: draw a centred, animated menu item ──────── */
+/* -- Helper: draw a centred, animated menu item -------- */
 static void DrawMenuItem(const char *text, int x, int y, int fontSize,
                           int selected, float animTime) {
     Color col;
@@ -34,7 +34,7 @@ static void DrawMenuItem(const char *text, int x, int y, int fontSize,
     DrawText(text, x - tw / 2, y, fontSize, col);
 }
 
-/* ── Animated SPACE JAM title ─────────────────────────── */
+/* -- Animated SPACE JAM title --------------------------- */
 static void DrawTitle(int screenW, int screenH, float time) {
     /* Glow layers */
     const char *title = "SPACE JAM";
@@ -72,7 +72,7 @@ static void DrawTitle(int screenW, int screenH, float time) {
              (Color){0, 150, 255, 180});
 }
 
-/* ── Helper: Robust Asset Texture Loader with Multi-Path Fallback ── */
+/* -- Helper: Robust Asset Texture Loader with Multi-Path Fallback -- */
 static Texture2D LoadTextureWithFallback(const char *relPath) {
     char buf[512];
     if (FileExists(relPath)) return LoadTexture(relPath);
@@ -95,7 +95,7 @@ static Texture2D LoadTextureWithFallback(const char *relPath) {
     return LoadTexture(relPath);
 }
 
-/* ── Menu init ───────────────────────────────────────── */
+/* -- Menu init ----------------------------------------- */
 
 void Menu_Init(MenuState *ms) {
     memset(ms, 0, sizeof(*ms));
@@ -129,9 +129,9 @@ void Menu_Shutdown(MenuState *ms) {
     ms->portraitsLoaded = 0;
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    MAIN MENU
-══════════════════════════════════════════════════════ */
+                                                       */
 
 static const char *kMainItems[] = { "START MISSION", "SERVICE RECORD", "CONTROLS", "SETTINGS", "EXIT" };
 static const int   kMainCount   = 5;
@@ -210,9 +210,9 @@ void Menu_DrawMain(const MenuState *ms, const GameContext *ctx,
              (Color){100, 100, 130, 180});
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    PAUSE MENU
-══════════════════════════════════════════════════════ */
+                                                       */
 
 static const char *kPauseItems[] = { "RESUME", "RESTART", "SETTINGS", "MAIN MENU", "QUIT GAME" };
 static const int   kPauseCount   = 5;
@@ -298,9 +298,9 @@ void Menu_DrawPause(const MenuState *ms, int screenW, int screenH) {
     }
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    GAME OVER
-══════════════════════════════════════════════════════ */
+                                                       */
 
 static const char *kGoItems[] = { "RESTART", "MAIN MENU", "QUIT GAME" };
 static const int   kGoCount   = 3;
@@ -390,9 +390,9 @@ void Menu_DrawGameOver(const MenuState *ms, const GameContext *ctx,
     }
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    SETTINGS
-══════════════════════════════════════════════════════ */
+                                                       */
 
 void Menu_UpdateSettings(MenuState *ms, GameContext *ctx, float dt) {
     ms->titleAnim += dt;
@@ -518,9 +518,9 @@ void Menu_DrawSettings(const MenuState *ms, const GameContext *ctx,
 }
 
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    CONTROLS SCREEN
-══════════════════════════════════════════════════════ */
+                                                       */
 
 void Menu_UpdateControls(MenuState *ms, GameContext *ctx, float dt) {
     ms->titleAnim += dt;
@@ -568,7 +568,7 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     Color headCol   = (Color){255, 200, 0, 255};
     Color divCol    = (Color){0, 80, 160, 120};
 
-    /* ── Movement section ── */
+    /* -- Movement section -- */
     DrawText("FLIGHT & PROPULSION", col1, startY, 13, headCol);
     DrawLine(col1, startY + 16, panX + panW - 28, startY + 16, divCol);
     startY += 22;
@@ -585,7 +585,7 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     }
     startY += 4 * rowH + 6;
 
-    /* ── Combat section ── */
+    /* -- Combat section -- */
     DrawText("COMBAT SYSTEMS", col1, startY, 13, headCol);
     DrawLine(col1, startY + 16, panX + panW - 28, startY + 16, divCol);
     startY += 22;
@@ -601,7 +601,7 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     }
     startY += 3 * rowH + 6;
 
-    /* ── Vector Relics section ── */
+    /* -- Vector Relics section -- */
     DrawText("THE SEVEN VECTORS (ANCIENT RELICS)", col1, startY, 13, headCol);
     DrawLine(col1, startY + 16, panX + panW - 28, startY + 16, divCol);
     startY += 22;
@@ -617,7 +617,7 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     }
     startY += 3 * rowH + 6;
 
-    /* ── Menu navigation section ── */
+    /* -- Menu navigation section -- */
     DrawText("MENUS", col1, startY, 13, headCol);
     DrawLine(col1, startY + 16, panX + panW - 30, startY + 16, divCol);
     startY += 22;
@@ -639,9 +639,9 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
              (Color){120, 120, 160, 200});
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    PROLOGUE STORY CRAWL (STAR WARS STYLE)
-══════════════════════════════════════════════════════ */
+                                                       */
 
 typedef struct {
     const char *text;
@@ -731,9 +731,9 @@ void Menu_DrawPrologue(const MenuState *ms, int screenW, int screenH) {
              (Color){ 0, 220, 255, (unsigned char)(140 + pulse * 115) });
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    TACTICAL RADIO COMMUNICATIONS CUTSCENE
-══════════════════════════════════════════════════════ */
+                                                       */
 
 typedef enum {
     SPEAKER_VANCE = 0,
@@ -763,7 +763,7 @@ static const CommsDialogue kCommsPrologue[] = {
       "Catastrophic breach! The Iron Synod armada has broken our orbital defense grid. Cities are burning.", 0 },
 
     { SPEAKER_NADIA, "NADIA", "EARTH CIVILIAN CORPS // FREQUENCY INTERCEPT",
-      "Harper, be careful! These Synod signatures aren't standard invaders—they are scanning for something ancient!", 0 },
+      "Harper, be careful! These Synod signatures aren't standard invaders-they are scanning for something ancient!", 0 },
 
     { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
       "Nadia, get to the evacuation transport with Mira and Mom! I'm going to hold the orbital corridor open.", 1 },
@@ -792,7 +792,7 @@ static const CommsDialogue kCommsMalakor[] = {
     { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
       "You invaded Earth and abducted my sister Mira! I'm taking your siege platform apart piece by piece!", 1 },
     { SPEAKER_ARCHON, "INQUISITOR MALAKOR", "SOLAR SIEGE PLATFORM 'HELIOS' // SECTOR 2",
-      "Your enemy is not the Empire, human! Your enemy is the Hollow—the nightmare we have been trying to contain!", 0 },
+      "Your enemy is not the Empire, human! Your enemy is the Hollow-the nightmare we have been trying to contain!", 0 },
     { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
       "Weapons locked on Helios thermal core. All batteries fire!", 1 },
 };
@@ -1062,7 +1062,7 @@ void Menu_DrawComms(const MenuState *ms, int screenW, int screenH) {
     DrawText(cd->callsign, boxX + 24, boxY + 32, 11, (Color){ 140, 160, 190, 180 });
     DrawLine(boxX + 20, boxY + 50, boxX + boxW - 20, boxY + 50, (Color){ 30, 60, 100, 180 });
 
-    /* Typewriter Substring — word-wrapped across up to 3 lines */
+    /* Typewriter Substring - word-wrapped across up to 3 lines */
     char subBuf[512];
     int len = ms->comms.charsRevealed;
     if (len > (int)sizeof(subBuf) - 1) len = (int)sizeof(subBuf) - 1;
@@ -1132,9 +1132,9 @@ void Menu_DrawComms(const MenuState *ms, int screenW, int screenH) {
              (Color){ 0, 220, 255, (unsigned char)(140 + pulse * 115) });
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    MILITARY SERVICE RECORD & MEDALS SHOWCASE
-══════════════════════════════════════════════════════ */
+                                                       */
 
 void Menu_UpdateMedals(MenuState *ms, GameContext *ctx, float dt) {
     (void)dt;
@@ -1255,9 +1255,9 @@ void Menu_DrawMedals(const MenuState *ms, const PlayerProgress *prog, int screen
     DrawText(bPrompt, screenW / 2 - bpw / 2, screenH - 28, 13, (Color){ 140, 160, 200, 190 });
 }
 
-/* ══════════════════════════════════════════════════════
+/*                                                       
    GENESIS ENGINE CHOICE (ACT III CLIMAX: 3 ENDINGS)
-══════════════════════════════════════════════════════ */
+                                                       */
 
 void Menu_StartGenesisChoice(MenuState *ms) {
     ms->selectedEnding = 0;
@@ -1340,13 +1340,13 @@ void Menu_DrawGenesisChoice(const MenuState *ms, const PlayerProgress *prog, int
             int         isLocked;
             Color       accent;
         } choices[3] = {
-            { "[ 1 ]", "BREAK THE ENGINE — THE HUMAN FUTURE (Ending A)",
+            { "[ 1 ]", "BREAK THE ENGINE - THE HUMAN FUTURE (Ending A)",
               "Shatter the ancient core. Earth is saved, but humanity must venture into the cosmos alone, free and mortal.",
               0, (Color){ 0, 220, 255, 255 } },
-            { "[ 2 ]", "CLAIM THE NEXUS — THE ETERNAL ORDER (Ending B)",
+            { "[ 2 ]", "CLAIM THE NEXUS - THE ETERNAL ORDER (Ending B)",
               "Assume control of the Synod network. Enforce universal, unyielding peace across the stars at the cost of free will.",
               0, (Color){ 255, 180, 30, 255 } },
-            { "[ 3 ]", "ASCEND TO THE VECTOR — THE LAST VECTOR (Ending C / True Ending)",
+            { "[ 3 ]", "ASCEND TO THE VECTOR - THE LAST VECTOR (Ending C / True Ending)",
               "Channel all Seven Vectors into your soul. Transcend physical mortality and become the eternal cosmic guardian against The Hollow.",
               !Progress_HasRelic(prog, VECTOR_ASCENDANT), (Color){ 255, 70, 180, 255 } }
         };
@@ -1414,7 +1414,7 @@ void Menu_DrawGenesisChoice(const MenuState *ms, const PlayerProgress *prog, int
 
             DrawText("Channeling all Seven Vectors through the Vanguard's core, Harper's mortal body dissolves into radiant light.", boxX + 32, boxY + 100, 13, (Color){ 220, 235, 250, 240 });
             DrawText("The ancient primordial void known as The Hollow shrieks and recoils as Harper becomes the living Vector itself.", boxX + 32, boxY + 130, 13, (Color){ 220, 235, 250, 240 });
-            DrawText("A woven bridge connecting every conscious soul in the universe—protecting the dreamers and thinkers of all galaxies.", boxX + 32, boxY + 160, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("A woven bridge connecting every conscious soul in the universe-protecting the dreamers and thinkers of all galaxies.", boxX + 32, boxY + 160, 13, (Color){ 220, 235, 250, 240 });
             DrawText("Centuries pass. On a green, peaceful Earth, Nadia looks up into the swirling starlight above.", boxX + 32, boxY + 190, 13, (Color){ 220, 235, 250, 240 });
             DrawText("'You're still out there, aren't you?' she whispers.", boxX + 32, boxY + 220, 13, (Color){ 255, 215, 0, 255 });
             DrawText("'Always,' whispers the cosmic wind.", boxX + 32, boxY + 250, 13, (Color){ 0, 240, 255, 255 });

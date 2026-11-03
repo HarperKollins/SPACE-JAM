@@ -61,7 +61,7 @@ void Relics_Update(RelicSystem *rs, Player *player, EnemyPool *enemies, Asteroid
     if (rs->temporalCooldown > 0.0f) rs->temporalCooldown -= dt;
     if (rs->voidCooldown > 0.0f)     rs->voidCooldown     -= dt;
 
-    /* ── 1. Gravity Vector (Key Q) Activation ── */
+    /* -- 1. Gravity Vector (Key Q) Activation -- */
     if ((rs->unlockedMask & (1u << VECTOR_GRAVITY)) && rs->gravityCooldown <= 0.0f) {
         if (IsKeyPressed(KEY_Q)) {
             rs->gravityActive   = 1;
@@ -138,7 +138,7 @@ void Relics_Update(RelicSystem *rs, Player *player, EnemyPool *enemies, Asteroid
         }
     }
 
-    /* ── 2. Temporal Vector (Key E) Activation ── */
+    /* -- 2. Temporal Vector (Key E) Activation -- */
     if ((rs->unlockedMask & (1u << VECTOR_TEMPORAL)) && rs->temporalCooldown <= 0.0f) {
         if (IsKeyPressed(KEY_E)) {
             rs->temporalActive   = 1;
@@ -171,7 +171,7 @@ void Relics_Update(RelicSystem *rs, Player *player, EnemyPool *enemies, Asteroid
         }
     }
 
-    /* ── 3. Void Vector (Key F) Activation ── */
+    /* -- 3. Void Vector (Key F) Activation -- */
     if ((rs->unlockedMask & (1u << VECTOR_VOID)) && rs->voidCooldown <= 0.0f) {
         if (IsKeyPressed(KEY_F)) {
             rs->voidActive   = 1;

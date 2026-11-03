@@ -43,6 +43,8 @@ ifeq ($(OS),Windows_NT)
     RAYLIB_LIBS    := -lraylib -lopengl32 -lgdi32 -lwinmm
     EXTRA_CFLAGS   :=
     EXTRA_LDFLAGS  :=
+    RES_OBJ        := $(BUILD_DIR)/spacejam_res.o
+    EXTRA_OBJS     := $(RES_OBJ)
 else
     PLATFORM := linux
     EXE      := $(BUILD_DIR)/$(PROJECT)
@@ -52,6 +54,7 @@ else
     RAYLIB_LIBS    := -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
     EXTRA_CFLAGS   :=
     EXTRA_LDFLAGS  :=
+    EXTRA_OBJS     :=
 endif
 
 # ── Compiler flags ────────────────────────────────────────────
@@ -107,15 +110,19 @@ help:
 
 # ── Build rules ───────────────────────────────────────────────
 
-$(EXE): $(OBJECTS)
+$(EXE): $(OBJECTS) $(EXTRA_OBJS)
 	@echo "[link] $@"
-	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
+	$(CC) -o $@ $(OBJECTS) $(EXTRA_OBJS) $(LDFLAGS)
 ifeq ($(PLATFORM),windows)
 	@cp -u /ucrt64/bin/libraylib.dll /ucrt64/bin/glfw3.dll $(BUILD_DIR)/ 2>/dev/null || true
 	@cp -u /ucrt64/bin/libraylib.dll /ucrt64/bin/glfw3.dll . 2>/dev/null || true
 	@cp -u $(EXE) . 2>/dev/null || true
 endif
 	@cp -ru assets $(BUILD_DIR)/ 2>/dev/null || true
+
+$(BUILD_DIR)/spacejam_res.o: spacejam.rc spacejam.ico | $(BUILD_DIR)
+	@echo "[rc]   $<"
+	windres spacejam.rc -O coff -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	@echo "[cc]   $<"
