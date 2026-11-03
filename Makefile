@@ -112,6 +112,8 @@ $(EXE): $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
 ifeq ($(PLATFORM),windows)
 	@cp -u /ucrt64/bin/libraylib.dll /ucrt64/bin/glfw3.dll $(BUILD_DIR)/ 2>/dev/null || true
+	@cp -u /ucrt64/bin/libraylib.dll /ucrt64/bin/glfw3.dll . 2>/dev/null || true
+	@cp -u $(EXE) . 2>/dev/null || true
 endif
 	@cp -ru assets $(BUILD_DIR)/ 2>/dev/null || true
 
