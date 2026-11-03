@@ -16,6 +16,7 @@
 #include "highscore.h"
 #include "settings.h"
 #include "progress.h"
+#include "relic.h"
 #include "utils.h"
 #include "config.h"
 #include "raylib.h"
@@ -35,6 +36,7 @@ static MenuState      g_menu;
 static AudioManager   g_audio;
 static HighScoreTable g_scores;
 static PlayerProgress g_prog;
+static RelicSystem    g_relics;
 
 /* Wave spawn state */
 static float g_enemySpawnTimer  = 0.0f;
@@ -73,6 +75,7 @@ void Game_Init(GameContext *ctx) {
 
     HighScore_Load(&g_scores);
     Progress_Init(&g_prog);
+    Relics_Init(&g_relics, &g_prog);
     ctx->highScore = HighScore_GetTop(&g_scores);
     if (g_prog.highestScore > ctx->highScore) ctx->highScore = g_prog.highestScore;
 
@@ -104,7 +107,8 @@ void Game_ChangeState(GameContext *ctx, GameState next) {
 
     if (next == STATE_MAIN_MENU || next == STATE_PROLOGUE ||
         next == STATE_COMMS     || next == STATE_SETTINGS  ||
-        next == STATE_CONTROLS  || next == STATE_MEDALS) {
+        next == STATE_CONTROLS  || next == STATE_MEDALS    ||
+        next == STATE_GENESIS_CHOICE) {
         Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_INTRO);
     } else if (next == STATE_PLAYING || next == STATE_PAUSED) {
         Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_BATTLE);
@@ -133,6 +137,7 @@ void Game_StartNewGame(GameContext *ctx) {
     Particles_Clear(&g_particles);
     Powerups_Clear(&g_powerups);
     Projectiles_Init(&g_projectiles);
+    Relics_Init(&g_relics, &g_prog);
 
     ctx->score              = 0;
     ctx->wave               = 0;
@@ -193,6 +198,15 @@ void Game_NextWave(GameContext *ctx) {
         Audio_PlaySFX(&g_audio, SFX_BOSS_APPEAR);
         g_waveTotalEnemies   += 1;
         ctx->waveEnemiesRequired += 1;
+
+        /* Narrative tactical comms cutscene before boss battle */
+        CommsSequenceId seq = COMMS_SEQ_VAREK_INCURSION;
+        if (sectorIdx == 1) seq = COMMS_SEQ_MALAKOR_INCURSION;
+        else if (sectorIdx == 2) seq = COMMS_SEQ_ZEPHYR_INCURSION;
+        else if (sectorIdx >= 3) seq = COMMS_SEQ_ARCHON_CONFRONTATION;
+
+        Menu_StartCommsSeq(&g_menu, seq);
+        Game_ChangeState(ctx, STATE_COMMS);
     }
 
     Asteroids_SetSpawnRate(&g_asteroids, ctx->wave);
@@ -296,11 +310,17 @@ void Game_Update(GameContext *ctx, float dt) {
 
             UpdateScreenShake(ctx, dt);
 
-            /* Player update */
+            /* Player & Vector Relics update */
             Player_Update(&g_player, dt, sw, sh);
+            Relics_Update(&g_relics, &g_player, &g_enemies, &g_asteroids, &g_particles, &g_audio, dt, sw, sh);
 
             /* Shoot */
             if (Player_TryShoot(&g_player, dt)) {
+                int bulletDmg = BULLET_DAMAGE;
+                if (g_relics.unlockedMask & (1u << VECTOR_GENESIS)) {
+                    bulletDmg = (int)((float)BULLET_DAMAGE * 1.35f);
+                }
+
                 float rotRad = DEG2RAD(g_player.rotation);
                 float cosR = cosf(rotRad);
                 float sinR = sinf(rotRad);
@@ -319,10 +339,10 @@ void Game_Update(GameContext *ctx, float dt) {
                     float perpX = -dir.y, perpY = dir.x;
                     Vector2 midL = { tip.x - perpX * 6.0f, tip.y - perpY * 6.0f };
                     Vector2 midR = { tip.x + perpX * 6.0f, tip.y + perpY * 6.0f };
-                    Projectile_SpawnPlayer(&g_projectiles, gunL, dir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, gunR, dir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, midL, dir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, midR, dir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, dir, bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, dir, bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, midL, dir, bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, midR, dir, bulletDmg);
                     Particles_SpawnSparks(&g_particles, gunL, 3, (Color){ 0, 240, 255, 255 });
                     Particles_SpawnSparks(&g_particles, gunR, 3, (Color){ 0, 240, 255, 255 });
                 } else if (g_player.weapon == WEAPON_SPREAD) {
@@ -331,18 +351,18 @@ void Game_Update(GameContext *ctx, float dt) {
                     Vector2 rightDir = AngleToDir(g_player.rotation + 18.0f);
                     Vector2 wideLDir = AngleToDir(g_player.rotation - 32.0f);
                     Vector2 wideRDir = AngleToDir(g_player.rotation + 32.0f);
-                    Projectile_SpawnPlayer(&g_projectiles, tip,  dir,      BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, gunL, leftDir,  BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, gunR, rightDir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, gunL, wideLDir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, gunR, wideRDir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, tip,  dir,      bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, leftDir,  bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, rightDir, bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, wideLDir, bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, wideRDir, bulletDmg);
                     Particles_SpawnSparks(&g_particles, tip,  4, (Color){ 255, 220,  0, 255 });
                     Particles_SpawnSparks(&g_particles, gunL, 3, (Color){ 255, 220,  0, 255 });
                     Particles_SpawnSparks(&g_particles, gunR, 3, (Color){ 255, 220,  0, 255 });
                 } else {
                     /* WEAPON_SINGLE (Default): Twin Synchronized Heavy Wingtip Autocannons */
-                    Projectile_SpawnPlayer(&g_projectiles, gunL, dir, BULLET_DAMAGE);
-                    Projectile_SpawnPlayer(&g_projectiles, gunR, dir, BULLET_DAMAGE);
+                    Projectile_SpawnPlayer(&g_projectiles, gunL, dir, bulletDmg);
+                    Projectile_SpawnPlayer(&g_projectiles, gunR, dir, bulletDmg);
                     Particles_SpawnSparks(&g_particles, gunL, 2, (Color){ 0, 220, 255, 255 });
                     Particles_SpawnSparks(&g_particles, gunR, 2, (Color){ 0, 220, 255, 255 });
                 }
@@ -482,12 +502,21 @@ void Game_Update(GameContext *ctx, float dt) {
                 g_prog.totalBossesDefeated++;
                 if (ctx->wave == 3) {
                     Progress_UnlockMedal(&g_prog, MEDAL_SAVIOR_OF_TERRA);
+                    Relics_Unlock(&g_relics, VECTOR_GRAVITY, &g_prog);
                 } else if (ctx->wave == 6) {
                     Progress_UnlockMedal(&g_prog, MEDAL_SOLAR_ACE);
+                    Relics_Unlock(&g_relics, VECTOR_TEMPORAL, &g_prog);
                 } else if (ctx->wave == 9) {
                     Progress_UnlockMedal(&g_prog, MEDAL_ICE_MARKSMAN);
+                    Relics_Unlock(&g_relics, VECTOR_VOID, &g_prog);
                 } else if (ctx->wave >= 12) {
                     Progress_UnlockMedal(&g_prog, MEDAL_CITADEL_SLAYER);
+                    Relics_Unlock(&g_relics, VECTOR_ASCENDANT, &g_prog);
+                    Audio_PlaySFX(&g_audio, SFX_MEDAL_AWARD);
+                    Progress_Save(&g_prog);
+                    Menu_StartGenesisChoice(&g_menu);
+                    Game_ChangeState(ctx, STATE_GENESIS_CHOICE);
+                    break;
                 }
                 if (g_player.health < 25) {
                     Progress_UnlockMedal(&g_prog, MEDAL_IRON_WILL);
@@ -548,6 +577,10 @@ void Game_Update(GameContext *ctx, float dt) {
             if (IsKeyPressed(KEY_ENTER)) Game_ChangeState(ctx, STATE_MAIN_MENU);
             break;
 
+        case STATE_GENESIS_CHOICE:
+            Menu_UpdateGenesisChoice(&g_menu, ctx, &g_prog, dt);
+            break;
+
         default: break;
     }
 }
@@ -588,10 +621,12 @@ void Game_Draw(GameContext *ctx) {
         Enemies_Draw(&g_enemies);
         Projectiles_Draw(&g_projectiles);
         Particles_Draw(&g_particles);
+        Relics_DrawEffects(&g_relics);
         if (Player_IsAlive(&g_player)) Player_Draw(&g_player);
         EndMode2D();
 
         HUD_Draw(ctx, &g_player, &g_enemies, sw, sh);
+        Relics_DrawHUD(&g_relics, sw, sh);
         HUD_DrawMedalPopup(g_prog.newlyUnlocked, g_prog.awardPopupTimer, sw);
 
         if (ctx->state == STATE_PAUSED) {
@@ -712,6 +747,8 @@ void Game_Draw(GameContext *ctx) {
             DrawText("Press ENTER to continue", sw / 2 - 130, sh / 2 + 20, 22, LIGHTGRAY);
             break;
         }
+        case STATE_GENESIS_CHOICE:
+            Menu_DrawGenesisChoice(&g_menu, &g_prog, sw, sh); break;
         default: break;
     }
 

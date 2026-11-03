@@ -14,6 +14,7 @@ spacejam_scores.dat
 spacejam_settings.dat
 
 # IDE & OS files
+compile_commands.json
 .vscode/
 .idea/
 *.swp

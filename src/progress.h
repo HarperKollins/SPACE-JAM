@@ -18,6 +18,17 @@ typedef enum {
     MEDAL_COUNT
 } MedalId;
 
+typedef enum {
+    VECTOR_GENESIS = 0,   /* Architect Consciousness: Piercing & weapon overcharge */
+    VECTOR_GRAVITY,       /* Gravitational Singularity (Key Q) */
+    VECTOR_TEMPORAL,      /* Chrono-Stasis & Hull Rewind (Key E) */
+    VECTOR_QUANTUM,       /* Micro-Warp Blink (Key SHIFT) */
+    VECTOR_VOID,          /* Phasing Dematerialization (Key F) */
+    VECTOR_NEXUS,         /* Chain Lightning Resonance */
+    VECTOR_ASCENDANT,     /* Transcendent Key / Unlocks Secret Ending C */
+    VECTOR_COUNT
+} VectorId;
+
 typedef struct {
     int      totalKills;
     int      totalShuttlesSaved;
@@ -26,6 +37,8 @@ typedef struct {
     int      maxWaveReached;
     int      highestScore;
     uint32_t medalsBitmask; /* 1 bit per MedalId */
+    uint32_t relicsBitmask; /* 1 bit per VectorId */
+    uint8_t  endingsSeen;   /* bit 0 = Ending A, bit 1 = Ending B, bit 2 = Ending C */
     int      newlyUnlocked; /* MedalId that was just awarded, or -1 */
     float    awardPopupTimer;
 } PlayerProgress;
@@ -35,10 +48,17 @@ void        Progress_Load(PlayerProgress *prog);
 void        Progress_Save(const PlayerProgress *prog);
 int         Progress_HasMedal(const PlayerProgress *prog, MedalId medal);
 int         Progress_UnlockMedal(PlayerProgress *prog, MedalId medal);
+int         Progress_HasRelic(const PlayerProgress *prog, VectorId relic);
+int         Progress_UnlockRelic(PlayerProgress *prog, VectorId relic);
+int         Progress_HasEnding(const PlayerProgress *prog, int endingIdx);
+int         Progress_UnlockEnding(PlayerProgress *prog, int endingIdx);
 const char *Progress_GetRankName(const PlayerProgress *prog);
 const char *Progress_GetMedalTitle(MedalId medal);
 const char *Progress_GetMedalDesc(MedalId medal);
 const char *Progress_GetMedalIcon(MedalId medal);
+const char *Progress_GetRelicName(VectorId relic);
+const char *Progress_GetRelicDesc(VectorId relic);
+const char *Progress_GetRelicKeyHint(VectorId relic);
 
 #endif /* SPACEJAM_PROGRESS_H */
 

@@ -102,22 +102,30 @@ void Menu_Init(MenuState *ms) {
 
     /* Load character portrait textures with resilient path fallback */
     ms->portraitsLoaded = 0;
-    ms->texHarper = LoadTextureWithFallback("assets/portraits/harper.jpg");
-    ms->texVance  = LoadTextureWithFallback("assets/portraits/vance.jpg");
-    ms->texArchon = LoadTextureWithFallback("assets/portraits/archon.jpg");
-    ms->texNadia  = LoadTextureWithFallback("assets/portraits/nadia.jpg");
-    ms->texAmara  = LoadTextureWithFallback("assets/portraits/amara.jpg");
-    ms->texMira   = LoadTextureWithFallback("assets/portraits/mira.jpg");
+    ms->texHarper   = LoadTextureWithFallback("assets/portraits/harper.jpg");
+    ms->texVance    = LoadTextureWithFallback("assets/portraits/vance.jpg");
+    ms->texArchon   = LoadTextureWithFallback("assets/portraits/archon.jpg");
+    ms->texNadia    = LoadTextureWithFallback("assets/portraits/nadia.jpg");
+    ms->texAmara    = LoadTextureWithFallback("assets/portraits/amara.jpg");
+    ms->texMira     = LoadTextureWithFallback("assets/portraits/mira.jpg");
+    ms->texVanguard = LoadTextureWithFallback("assets/textures/vanguard.jpg");
+    ms->texOdyssey  = LoadTextureWithFallback("assets/textures/odyssey.jpg");
     if (ms->texHarper.id > 0) ms->portraitsLoaded = 1;
+
+    ms->selectedEnding = 0;
+    ms->endingChosen = -1;
+    ms->endingTimer = 0.0f;
 }
 
 void Menu_Shutdown(MenuState *ms) {
-    if (ms->texHarper.id > 0) UnloadTexture(ms->texHarper);
-    if (ms->texVance.id  > 0) UnloadTexture(ms->texVance);
-    if (ms->texArchon.id > 0) UnloadTexture(ms->texArchon);
-    if (ms->texNadia.id  > 0) UnloadTexture(ms->texNadia);
-    if (ms->texAmara.id  > 0) UnloadTexture(ms->texAmara);
-    if (ms->texMira.id   > 0) UnloadTexture(ms->texMira);
+    if (ms->texHarper.id   > 0) UnloadTexture(ms->texHarper);
+    if (ms->texVance.id    > 0) UnloadTexture(ms->texVance);
+    if (ms->texArchon.id   > 0) UnloadTexture(ms->texArchon);
+    if (ms->texNadia.id    > 0) UnloadTexture(ms->texNadia);
+    if (ms->texAmara.id    > 0) UnloadTexture(ms->texAmara);
+    if (ms->texMira.id     > 0) UnloadTexture(ms->texMira);
+    if (ms->texVanguard.id > 0) UnloadTexture(ms->texVanguard);
+    if (ms->texOdyssey.id  > 0) UnloadTexture(ms->texOdyssey);
     ms->portraitsLoaded = 0;
 }
 
@@ -540,9 +548,9 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
              (Color){0, 150, 255, 160});
 
     /* Panel background */
-    int panW = 580, panH = 410;
+    int panW = 600, panH = 500;
     int panX = screenW / 2 - panW / 2;
-    int panY = (int)((float)screenH * 0.16f);
+    int panY = (int)((float)screenH * 0.14f);
     DrawRectangleRounded((Rectangle){(float)panX, (float)panY, (float)panW, (float)panH},
                          0.08f, 8, (Color){8, 8, 28, 200});
     DrawRectangleRoundedLines((Rectangle){(float)panX, (float)panY, (float)panW, (float)panH},
@@ -551,9 +559,9 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     /* Column layout: KEY on left, ACTION on right */
     int col1 = panX + 28;          /* key label */
     int col2 = panX + 230;         /* action label */
-    int rowH  = 32;
-    int startY = panY + 20;
-    int fs    = 17;
+    int rowH  = 26;
+    int startY = panY + 16;
+    int fs    = 15;
 
     Color keyCol    = (Color){0, 220, 255, 255};
     Color actCol    = (Color){200, 200, 220, 230};
@@ -561,9 +569,9 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
     Color divCol    = (Color){0, 80, 160, 120};
 
     /* ── Movement section ── */
-    DrawText("FLIGHT & PROPULSION", col1, startY, 14, headCol);
-    DrawLine(col1, startY + 18, panX + panW - 28, startY + 18, divCol);
-    startY += 24;
+    DrawText("FLIGHT & PROPULSION", col1, startY, 13, headCol);
+    DrawLine(col1, startY + 16, panX + panW - 28, startY + 16, divCol);
+    startY += 22;
 
     struct { const char *key; const char *action; } rows[] = {
         { "W  /  UP ARROW",       "Thrust forward (Nitro)"  },
@@ -575,12 +583,12 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
         DrawText(rows[i].key,    col1, startY + i * rowH, fs, keyCol);
         DrawText(rows[i].action, col2, startY + i * rowH, fs, actCol);
     }
-    startY += 4 * rowH + 8;
+    startY += 4 * rowH + 6;
 
     /* ── Combat section ── */
-    DrawText("COMBAT SYSTEMS", col1, startY, 14, headCol);
-    DrawLine(col1, startY + 18, panX + panW - 28, startY + 18, divCol);
-    startY += 24;
+    DrawText("COMBAT SYSTEMS", col1, startY, 13, headCol);
+    DrawLine(col1, startY + 16, panX + panW - 28, startY + 16, divCol);
+    startY += 22;
 
     struct { const char *key; const char *action; } combat[] = {
         { "SPACE / LEFT CLICK",  "Twin Wingtip Cannons" },
@@ -591,20 +599,35 @@ void Menu_DrawControls(const MenuState *ms, int screenW, int screenH) {
         DrawText(combat[i].key,    col1, startY + i * rowH, fs, keyCol);
         DrawText(combat[i].action, col2, startY + i * rowH, fs, actCol);
     }
-    startY += 3 * rowH + 10;
+    startY += 3 * rowH + 6;
+
+    /* ── Vector Relics section ── */
+    DrawText("THE SEVEN VECTORS (ANCIENT RELICS)", col1, startY, 13, headCol);
+    DrawLine(col1, startY + 16, panX + panW - 28, startY + 16, divCol);
+    startY += 22;
+
+    struct { const char *key; const char *action; } relics[] = {
+        { "Q KEY",               "Gravity Singularity (Pull & Crush)" },
+        { "E KEY",               "Temporal Stasis & 35 HP Rewind"    },
+        { "F KEY",               "Void Phase Dematerialization"      },
+    };
+    for (int i = 0; i < 3; i++) {
+        DrawText(relics[i].key,    col1, startY + i * rowH, fs, (Color){ 255, 120, 255, 255 });
+        DrawText(relics[i].action, col2, startY + i * rowH, fs, actCol);
+    }
+    startY += 3 * rowH + 6;
 
     /* ── Menu navigation section ── */
-    DrawText("MENUS", col1, startY, 14, headCol);
-    DrawLine(col1, startY + 18, panX + panW - 30, startY + 18, divCol);
-    startY += 26;
+    DrawText("MENUS", col1, startY, 13, headCol);
+    DrawLine(col1, startY + 16, panX + panW - 30, startY + 16, divCol);
+    startY += 22;
 
     struct { const char *key; const char *action; } menus[] = {
         { "W/S  or  UP/DOWN", "Navigate items"  },
         { "ENTER  or  SPACE", "Confirm / select" },
         { "ESC",              "Back / pause"     },
-        { "Mouse click",      "Also works everywhere" },
     };
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
         DrawText(menus[i].key,    col1, startY + i * rowH, fs, keyCol);
         DrawText(menus[i].action, col2, startY + i * rowH, fs, actCol);
     }
@@ -729,7 +752,7 @@ typedef struct {
     int         onRight; /* 0 = left panel, 1 = right panel */
 } CommsDialogue;
 
-static const CommsDialogue kCommsDialogue[] = {
+static const CommsDialogue kCommsPrologue[] = {
     { SPEAKER_VANCE, "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
       "Vanguard-1, do you copy? Harper, do you read me?", 0 },
 
@@ -751,7 +774,72 @@ static const CommsDialogue kCommsDialogue[] = {
     { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
       "Weapons hot. Twin wingtip autocannons primed. No Imperial warship touches those shuttles. Engaging now!", 1 },
 };
-#define COMMS_TOTAL_LINES 7
+
+static const CommsDialogue kCommsVarek[] = {
+    { SPEAKER_ARCHON, "COMMANDER VAREK", "SYNOD CRUISER 'REAVER' // SECTOR 1",
+      "The son of Amara Kollins... You are remarkably similar to her, boy.", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "Where is my mother, Varek? Where have you taken her?!", 1 },
+    { SPEAKER_ARCHON, "COMMANDER VAREK", "SYNOD CRUISER 'REAVER' // SECTOR 1",
+      "You still believe this is about rescuing your family? The Archon awaits your arrival in the Citadel. Genesis will be ours!", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "You won't live to report to him. Vanguard-1 engaging Synod Cruiser Reaver!", 1 },
+};
+
+static const CommsDialogue kCommsMalakor[] = {
+    { SPEAKER_ARCHON, "INQUISITOR MALAKOR", "SOLAR SIEGE PLATFORM 'HELIOS' // SECTOR 2",
+      "Turn back, human! The Solar Corona holds ancient Architect archives that your fragile species cannot comprehend.", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "You invaded Earth and abducted my sister Mira! I'm taking your siege platform apart piece by piece!", 1 },
+    { SPEAKER_ARCHON, "INQUISITOR MALAKOR", "SOLAR SIEGE PLATFORM 'HELIOS' // SECTOR 2",
+      "Your enemy is not the Empire, human! Your enemy is the Hollow—the nightmare we have been trying to contain!", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "Weapons locked on Helios thermal core. All batteries fire!", 1 },
+};
+
+static const CommsDialogue kCommsZephyr[] = {
+    { SPEAKER_ARCHON, "HIGH ADMIRAL ZEPHYR", "STEALTH CARRIER 'VOID STALKER' // SECTOR 3",
+      "You have penetrated the Ice Rings of Xylos. Did you find your mother's secret archive?", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "She loved Kael thirty years ago! He was an idealist until he chose to enslave the galaxy under the Synod!", 1 },
+    { SPEAKER_ARCHON, "HIGH ADMIRAL ZEPHYR", "STEALTH CARRIER 'VOID STALKER' // SECTOR 3",
+      "He sought to cure the galaxy of the plague of free-willed chaos. Prepare to freeze in the void!", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "Not today, Admiral. Vanguard-1 breaking through the blockade!", 1 },
+};
+
+static const CommsDialogue kCommsArchon[] = {
+    { SPEAKER_ARCHON, "THE IRON ARCHON", "CITADEL FLAGSHIP 'APOCALYPSE' // SECTOR 4",
+      "You have travelled across the galaxy, Harper. You have your mother's eyes.", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "You took my mother, my sister, and my world. Give them back, Kael!", 1 },
+    { SPEAKER_ARCHON, "THE IRON ARCHON", "CITADEL FLAGSHIP 'APOCALYPSE' // SECTOR 4",
+      "Amara always did prefer stubborn children. The Hollow has awakened. Submit to Genesis, and humanity will live forever as one.", 0 },
+    { SPEAKER_AMARA, "DR. AMARA KOLLINS", "FREQUENCY OVERRIDE // CITADEL CORE",
+      "Harper! Don't let him do it! Kael, you cannot save people by taking away their right to choose!", 0 },
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "You don't save people by turning them into you. Vanguard-1 engaging the Citadel Flagship!", 1 },
+};
+
+static const CommsDialogue *GetCommsLine(CommsSequenceId seq, int line, int *outTotal) {
+    switch (seq) {
+        case COMMS_SEQ_VAREK_INCURSION:
+            if (outTotal) *outTotal = 4;
+            return &kCommsVarek[line < 4 ? line : 3];
+        case COMMS_SEQ_MALAKOR_INCURSION:
+            if (outTotal) *outTotal = 4;
+            return &kCommsMalakor[line < 4 ? line : 3];
+        case COMMS_SEQ_ZEPHYR_INCURSION:
+            if (outTotal) *outTotal = 4;
+            return &kCommsZephyr[line < 4 ? line : 3];
+        case COMMS_SEQ_ARCHON_CONFRONTATION:
+            if (outTotal) *outTotal = 5;
+            return &kCommsArchon[line < 5 ? line : 4];
+        default:
+            if (outTotal) *outTotal = 7;
+            return &kCommsPrologue[line < 7 ? line : 6];
+    }
+}
 
 static void DrawSpeakerPortrait(const MenuState *ms, SpeakerId speaker,
                                 const char *name, const char *role,
@@ -834,27 +922,37 @@ static void DrawSpeakerPortrait(const MenuState *ms, SpeakerId speaker,
     }
 }
 
-void Menu_StartComms(MenuState *ms) {
+void Menu_StartCommsSeq(MenuState *ms, CommsSequenceId seq) {
+    ms->comms.sequence      = seq;
     ms->comms.currentLine   = 0;
     ms->comms.charTimer     = 0.0f;
     ms->comms.charsRevealed = 0;
     ms->comms.beepTimer     = 0.0f;
     ms->comms.freqAnim      = 0.0f;
+    int total = 7;
+    GetCommsLine(seq, 0, &total);
+    ms->comms.totalLines    = total;
     Game_PlaySFX(SFX_RADIO_CHIRP);
     Game_PlaySFX(SFX_RADIO_STATIC);
+}
+
+void Menu_StartComms(MenuState *ms) {
+    Menu_StartCommsSeq(ms, COMMS_SEQ_PROLOGUE);
 }
 
 void Menu_UpdateComms(MenuState *ms, GameContext *ctx, float dt) {
     ms->comms.freqAnim += dt * 8.0f;
 
-    if (ms->comms.currentLine >= COMMS_TOTAL_LINES) {
+    if (ms->comms.currentLine >= ms->comms.totalLines) {
         Game_PlaySFX(SFX_WARP_JUMP);
-        Game_StartNewGame(ctx);
+        if (ms->comms.sequence == COMMS_SEQ_PROLOGUE) {
+            Game_StartNewGame(ctx);
+        }
         Game_ChangeState(ctx, STATE_PLAYING);
         return;
     }
 
-    const CommsDialogue *cd = &kCommsDialogue[ms->comms.currentLine];
+    const CommsDialogue *cd = GetCommsLine(ms->comms.sequence, ms->comms.currentLine, NULL);
     int textLen = (int)strlen(cd->text);
 
     /* Typewriter text advance */
@@ -879,11 +977,13 @@ void Menu_UpdateComms(MenuState *ms, GameContext *ctx, float dt) {
             ms->comms.currentLine++;
             ms->comms.charsRevealed = 0;
             ms->comms.charTimer     = 0.0f;
-            if (ms->comms.currentLine < COMMS_TOTAL_LINES) {
+            if (ms->comms.currentLine < ms->comms.totalLines) {
                 Game_PlaySFX(SFX_RADIO_CHIRP);
             } else {
                 Game_PlaySFX(SFX_WARP_JUMP);
-                Game_StartNewGame(ctx);
+                if (ms->comms.sequence == COMMS_SEQ_PROLOGUE) {
+                    Game_StartNewGame(ctx);
+                }
                 Game_ChangeState(ctx, STATE_PLAYING);
             }
         }
@@ -892,7 +992,9 @@ void Menu_UpdateComms(MenuState *ms, GameContext *ctx, float dt) {
     /* ESC: skip directly to gameplay */
     if (IsKeyPressed(KEY_ESCAPE)) {
         Game_PlaySFX(SFX_WARP_JUMP);
-        Game_StartNewGame(ctx);
+        if (ms->comms.sequence == COMMS_SEQ_PROLOGUE) {
+            Game_StartNewGame(ctx);
+        }
         Game_ChangeState(ctx, STATE_PLAYING);
     }
 }
@@ -901,17 +1003,24 @@ void Menu_DrawComms(const MenuState *ms, int screenW, int screenH) {
     /* Dim overlay */
     DrawRectangle(0, 0, screenW, screenH, (Color){ 2, 4, 14, 220 });
 
-    if (ms->comms.currentLine >= COMMS_TOTAL_LINES) return;
-    const CommsDialogue *cd = &kCommsDialogue[ms->comms.currentLine];
+    if (ms->comms.currentLine >= ms->comms.totalLines) return;
+    const CommsDialogue *cd = GetCommsLine(ms->comms.sequence, ms->comms.currentLine, NULL);
 
     /* 1. Header Bar: Frequency & Security Clearance */
     int topY = (int)((float)screenH * 0.08f);
     DrawRectangle(0, topY - 14, screenW, 36, (Color){ 4, 12, 28, 220 });
     DrawLine(0, topY + 22, screenW, topY + 22, (Color){ 0, 180, 255, 140 });
 
-    const char *headerTitle = "TACTICAL COMMS // MILITARY FREQUENCY 104.8 MHz // [ QUANTUM ENCRYPTED ]";
+    const char *headerTitle =
+        (ms->comms.sequence == COMMS_SEQ_VAREK_INCURSION)   ? "[ALERT] HOSTILE TRANSMISSION // SYNOD CRUISER 'REAVER'" :
+        (ms->comms.sequence == COMMS_SEQ_MALAKOR_INCURSION) ? "[ALERT] SOLAR SIEGE PLATFORM 'HELIOS' // THERMAL CORE" :
+        (ms->comms.sequence == COMMS_SEQ_ZEPHYR_INCURSION)  ? "[ALERT] HIGH ADMIRAL ZEPHYR // STEALTH CARRIER 'VOID STALKER'" :
+        (ms->comms.sequence == COMMS_SEQ_ARCHON_CONFRONTATION) ? "[CRITICAL] THE IRON ARCHON // CITADEL FLAGSHIP 'APOCALYPSE'" :
+        "TACTICAL COMMS // MILITARY FREQUENCY 104.8 MHz // [ QUANTUM ENCRYPTED ]";
+
     int htw = MeasureText(headerTitle, 14);
-    DrawText(headerTitle, screenW / 2 - htw / 2, topY - 5, 14, (Color){ 0, 240, 200, 255 });
+    Color headTint = (ms->comms.sequence != COMMS_SEQ_PROLOGUE) ? (Color){ 255, 80, 80, 255 } : (Color){ 0, 240, 200, 255 };
+    DrawText(headerTitle, screenW / 2 - htw / 2, topY - 5, 14, headTint);
 
     /* 2. Speaker Portrait Panels (Incoming on Left, Harper on Right) */
     int panW = 260, panH = 190;
@@ -1144,4 +1253,176 @@ void Menu_DrawMedals(const MenuState *ms, const PlayerProgress *prog, int screen
     const char *bPrompt = "[ ARROWS / WASD ] SELECT MEDAL   |   [ ESC / ENTER / CLICK ] BACK TO MAIN MENU";
     int bpw = MeasureText(bPrompt, 13);
     DrawText(bPrompt, screenW / 2 - bpw / 2, screenH - 28, 13, (Color){ 140, 160, 200, 190 });
+}
+
+/* ══════════════════════════════════════════════════════
+   GENESIS ENGINE CHOICE (ACT III CLIMAX: 3 ENDINGS)
+══════════════════════════════════════════════════════ */
+
+void Menu_StartGenesisChoice(MenuState *ms) {
+    ms->selectedEnding = 0;
+    ms->endingChosen = -1;
+    ms->endingTimer = 0.0f;
+}
+
+void Menu_UpdateGenesisChoice(MenuState *ms, GameContext *ctx, PlayerProgress *prog, float dt) {
+    ms->endingTimer += dt;
+
+    if (ms->endingChosen < 0) {
+        if (IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W)) {
+            ms->selectedEnding = (ms->selectedEnding - 1 + 3) % 3;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+            ms->selectedEnding = (ms->selectedEnding + 1) % 3;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsKeyPressed(KEY_ONE))   { ms->selectedEnding = 0; Game_PlaySFX(SFX_MENU_SELECT); }
+        if (IsKeyPressed(KEY_TWO))   { ms->selectedEnding = 1; Game_PlaySFX(SFX_MENU_SELECT); }
+        if (IsKeyPressed(KEY_THREE)) { ms->selectedEnding = 2; Game_PlaySFX(SFX_MENU_SELECT); }
+
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            if (ms->selectedEnding == 2 && !Progress_HasRelic(prog, VECTOR_ASCENDANT)) {
+                Game_PlaySFX(SFX_PLAYER_HIT);
+            } else {
+                ms->endingChosen = ms->selectedEnding;
+                ms->endingTimer = 0.0f;
+                Game_PlaySFX(SFX_MEDAL_AWARD);
+                Progress_UnlockEnding(prog, ms->endingChosen);
+                Progress_UnlockMedal(prog, MEDAL_VANGUARD_LEGEND);
+                Progress_Save(prog);
+            }
+        }
+    } else {
+        if (ms->endingTimer > 1.2f && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
+                                      IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+            Game_PlaySFX(SFX_WARP_JUMP);
+            Game_ChangeState(ctx, STATE_MAIN_MENU);
+        }
+    }
+}
+
+void Menu_DrawGenesisChoice(const MenuState *ms, const PlayerProgress *prog, int screenW, int screenH) {
+    /* Dim backdrop */
+    DrawRectangle(0, 0, screenW, screenH, (Color){ 4, 6, 14, 245 });
+
+    /* Pulsing Genesis Core Energy Rings */
+    float t = (float)GetTime();
+    Vector2 coreCenter = { (float)screenW * 0.5f, (float)screenH * 0.45f };
+    for (int r = 1; r <= 4; r++) {
+        float rad = 80.0f + (float)r * 60.0f + sinf(t * 2.0f + (float)r) * 12.0f;
+        Color ringCol = (r % 2 == 0) ? (Color){ 0, 220, 255, (unsigned char)(25 + r * 10) }
+                                     : (Color){ 255, 200, 30, (unsigned char)(20 + r * 8) };
+        DrawCircleLines((int)coreCenter.x, (int)coreCenter.y, rad, ringCol);
+    }
+
+    if (ms->endingChosen < 0) {
+        /* Title */
+        const char *hdr = "THE GENESIS ENGINE // THE ARCHITECT NEXUS";
+        int hw = MeasureText(hdr, 22);
+        DrawText(hdr, screenW / 2 - hw / 2, 45, 22, (Color){ 0, 240, 255, 255 });
+
+        const char *sub = "THE SYNOD CITADEL HAS FALLEN. HARPER KOLLINS STANDS BEFORE THE CORE OF CREATION.";
+        int sw = MeasureText(sub, 12);
+        DrawText(sub, screenW / 2 - sw / 2, 75, 12, (Color){ 180, 200, 230, 220 });
+
+        /* 3 Choice Cards */
+        int cardW = (int)((float)screenW * 0.76f);
+        int cardH = 92;
+        int startY = 125;
+        int gap = 20;
+        int cardX = screenW / 2 - cardW / 2;
+
+        struct {
+            const char *num;
+            const char *title;
+            const char *desc;
+            int         isLocked;
+            Color       accent;
+        } choices[3] = {
+            { "[ 1 ]", "BREAK THE ENGINE — THE HUMAN FUTURE (Ending A)",
+              "Shatter the ancient core. Earth is saved, but humanity must venture into the cosmos alone, free and mortal.",
+              0, (Color){ 0, 220, 255, 255 } },
+            { "[ 2 ]", "CLAIM THE NEXUS — THE ETERNAL ORDER (Ending B)",
+              "Assume control of the Synod network. Enforce universal, unyielding peace across the stars at the cost of free will.",
+              0, (Color){ 255, 180, 30, 255 } },
+            { "[ 3 ]", "ASCEND TO THE VECTOR — THE LAST VECTOR (Ending C / True Ending)",
+              "Channel all Seven Vectors into your soul. Transcend physical mortality and become the eternal cosmic guardian against The Hollow.",
+              !Progress_HasRelic(prog, VECTOR_ASCENDANT), (Color){ 255, 70, 180, 255 } }
+        };
+
+        for (int i = 0; i < 3; i++) {
+            int cy = startY + i * (cardH + gap);
+            int isSel = (ms->selectedEnding == i);
+            int locked = choices[i].isLocked;
+
+            Color bg = isSel ? (Color){ 20, 35, 60, 230 } : (Color){ 10, 16, 30, 210 };
+            Color border = locked ? (Color){ 60, 60, 80, 140 } :
+                           isSel  ? choices[i].accent : (Color){ 40, 70, 110, 180 };
+
+            DrawRectangleRounded((Rectangle){ (float)cardX, (float)cy, (float)cardW, (float)cardH }, 0.08f, 6, bg);
+            DrawRectangleRoundedLines((Rectangle){ (float)cardX, (float)cy, (float)cardW, (float)cardH }, 0.08f, 6, border);
+
+            DrawText(choices[i].num, cardX + 18, cy + 16, 16, isSel ? choices[i].accent : (Color){ 140, 160, 190, 220 });
+            DrawText(choices[i].title, cardX + 75, cy + 16, 15, locked ? (Color){ 130, 130, 140, 180 } : choices[i].accent);
+            DrawText(choices[i].desc, cardX + 75, cy + 44, 12, (Color){ 200, 215, 235, 220 });
+
+            if (locked) {
+                DrawText("[ LOCKED: Requires Ascendant Vector ]", cardX + cardW - 270, cy + 64, 11, (Color){ 255, 80, 80, 220 });
+            } else if (isSel) {
+                DrawText("[ PRESS ENTER OR SPACE TO CONFIRM ]", cardX + cardW - 260, cy + 64, 11, (Color){ 0, 255, 170, 240 });
+            }
+        }
+
+        /* Footer Prompt */
+        const char *ft = "[ UP / DOWN / 1-3 ] SELECT DESTINY   |   [ ENTER / SPACE ] CHOOSE FATE";
+        int fw = MeasureText(ft, 13);
+        DrawText(ft, screenW / 2 - fw / 2, screenH - 35, 13, (Color){ 150, 175, 210, 200 });
+    } else {
+        /* Epilogue Narrative Card */
+        int boxW = (int)((float)screenW * 0.82f);
+        int boxH = (int)((float)screenH * 0.76f);
+        int boxX = screenW / 2 - boxW / 2;
+        int boxY = screenH / 2 - boxH / 2;
+
+        DrawRectangleRounded((Rectangle){ (float)boxX, (float)boxY, (float)boxW, (float)boxH }, 0.08f, 8, (Color){ 6, 10, 22, 245 });
+        DrawRectangleRoundedLines((Rectangle){ (float)boxX, (float)boxY, (float)boxW, (float)boxH }, 0.08f, 8, (Color){ 0, 220, 255, 200 });
+
+        if (ms->endingChosen == 0) {
+            DrawText("ENDING A: THE HUMAN FUTURE", boxX + 32, boxY + 28, 22, (Color){ 0, 240, 255, 255 });
+            DrawText("STATUS: CANONICAL VICTORY // CITADEL DESTROYED", boxX + 32, boxY + 58, 12, (Color){ 0, 255, 160, 220 });
+
+            DrawText("With a final concentrated salvo from the HK-01 Vanguard, the Genesis Engine shatters into stardust.", boxX + 32, boxY + 100, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("Across three hundred star systems, the Synod's mechanical dreadnoughts go silent.", boxX + 32, boxY + 130, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("Earth's cradle is saved. The evacuation fleets return to rebuilt skies over New Lagos and the old continents.", boxX + 32, boxY + 160, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("Nadia waits on the tarmac. Mira inspects the scorched titanium hull of the Vanguard.", boxX + 32, boxY + 190, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("'Did we win?' Nadia asks, reaching for Harper's hand.", boxX + 32, boxY + 220, 13, (Color){ 255, 215, 0, 255 });
+            DrawText("'We survived,' Harper answers softly. 'And tomorrow is entirely ours.'", boxX + 32, boxY + 250, 13, (Color){ 0, 240, 255, 255 });
+        } else if (ms->endingChosen == 1) {
+            DrawText("ENDING B: THE ETERNAL ORDER", boxX + 32, boxY + 28, 22, (Color){ 255, 190, 40, 255 });
+            DrawText("STATUS: SYNOD RECONFIGURED // ABSOLUTE HARMONY", boxX + 32, boxY + 58, 12, (Color){ 255, 215, 80, 220 });
+
+            DrawText("Harper steps onto the central pedestal of the Genesis Nexus, linking his mind directly into the Architect network.", boxX + 32, boxY + 100, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("In a single heartbeat, the planetary bombardment halts. The Synod bows to a new Shepherd.", boxX + 32, boxY + 130, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("From the orbital throne of the Citadel, Harper watches over forty thousand worlds in flawless, silent peace.", boxX + 32, boxY + 160, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("No world will ever burn again. No child will ever bleed in war.", boxX + 32, boxY + 190, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("Yet across the quiet throne, a single tear rolls down his cybernetic helm:", boxX + 32, boxY + 220, 13, (Color){ 255, 215, 0, 255 });
+            DrawText("Humanity is safe from extinction forever... but it will never truly be free.", boxX + 32, boxY + 250, 13, (Color){ 255, 120, 120, 255 });
+        } else {
+            DrawText("ENDING C: THE LAST VECTOR (CANONICAL TRUE ENDING)", boxX + 32, boxY + 28, 22, (Color){ 255, 80, 200, 255 });
+            DrawText("STATUS: CONSCIOUSNESS ASCENSION // TRANSCENDENT GUARDIAN", boxX + 32, boxY + 58, 12, (Color){ 0, 255, 220, 240 });
+
+            DrawText("Channeling all Seven Vectors through the Vanguard's core, Harper's mortal body dissolves into radiant light.", boxX + 32, boxY + 100, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("The ancient primordial void known as The Hollow shrieks and recoils as Harper becomes the living Vector itself.", boxX + 32, boxY + 130, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("A woven bridge connecting every conscious soul in the universe—protecting the dreamers and thinkers of all galaxies.", boxX + 32, boxY + 160, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("Centuries pass. On a green, peaceful Earth, Nadia looks up into the swirling starlight above.", boxX + 32, boxY + 190, 13, (Color){ 220, 235, 250, 240 });
+            DrawText("'You're still out there, aren't you?' she whispers.", boxX + 32, boxY + 220, 13, (Color){ 255, 215, 0, 255 });
+            DrawText("'Always,' whispers the cosmic wind.", boxX + 32, boxY + 250, 13, (Color){ 0, 240, 255, 255 });
+        }
+
+        /* Bottom return prompt */
+        const char *cont = "[ PRESS SPACE / ENTER / ESCAPE TO RETURN TO COMMAND DECK ]";
+        int cw = MeasureText(cont, 14);
+        DrawText(cont, screenW / 2 - cw / 2, boxY + boxH - 38, 14, (Color){ 0, 255, 170, 255 });
+    }
 }

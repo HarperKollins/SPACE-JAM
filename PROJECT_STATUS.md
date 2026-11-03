@@ -59,11 +59,31 @@ SPACE JAM is fully designed, implemented, and compiled cleanly into a native exe
   - Dedicated boss health bar rendered across the bottom of the HUD.
 - [x] Dynamic screen shake with configurable decay.
 
-### Milestone 7 — Delivery & Build
+### Milestone 7 — Seven Vectors & Narrative Tactical Comms
+- [x] Master Story Bible (`STORY_BIBLE.md`) and Episode I 29-chapter screenplay (`EPISODE_1_SCRIPT.md`) authored by Harper Kollins integrated into project.
+- [x] The Seven Vectors Relic System (`src/relic.c/h`):
+  - Gravity Singularity (Key `Q`): Gravitational well crushing hostiles.
+  - Temporal Chrono-Stasis (Key `E`): Time dilation to 25% hostile speed & +35 HP rewind.
+  - Void Phasing (Key `F`): Ethereal state granting invulnerability to collisions.
+  - Genesis Overcharge: Passive +35% bullet damage and piercing.
+  - Ascendant Vector: Transcendent key to unlock canonical Ending C.
+- [x] Tactical Narrative Comms System (`src/menu.c/h`):
+  - Dynamic character portraits: Harper Kollins, Commander Vance, Grand Archon, Nadia, Dr. Amara, Mira.
+  - Pre-boss confrontation dialogues for Commander Varek (Sector 1), High Inquisitor Malakor (Sector 2), Archon Zephyr (Sector 3), and Grand Archon (Sector 4).
+
+### Milestone 8 — The Genesis Engine Climax & 3 Endings
+- [x] Act III Climax State Machine (`STATE_GENESIS_CHOICE`):
+  - **Ending A — The Human Future:** Destroy Genesis Engine; Earth is saved, humanity remains free and mortal.
+  - **Ending B — The Eternal Order:** Claim the Synod Core; universal peace enforced across 40,000 worlds without free will.
+  - **Ending C — The Last Vector (Canonical True Ending):** Transcendent cosmic fusion guarding all living minds from The Hollow.
+- [x] Persistent profile storage (`spacejam_save.dat`) tracking medals, relics, highest scores, sectors, and multi-endings seen.
+- [x] High-resolution spacecraft textures (`assets/textures/vanguard.jpg`, `assets/textures/odyssey.jpg`) with fallbacks.
+
+### Milestone 9 — Delivery & Build
 - [x] Clean compilation under GCC 16 with `-std=c11 -Wall -Wextra -Wpedantic`.
 - [x] Makefile with targets: `all`, `run`, `release`, `debug`, `clean`, `help`.
 - [x] Auto-bundling of required runtime DLLs (`libraylib.dll`, `glfw3.dll`) into `build/`.
-- [x] Comprehensive documentation in `README.md` and MIT License.
+- [x] Comprehensive documentation in `README.md`, `SYSTEMS_ARCHITECTURE.md`, and MIT License.
 
 ---
 
@@ -93,7 +113,9 @@ SPACE_JAM/
 │   ├── particles.c / .h# Particle pool & emitters
 │   ├── player.c / .h   # Spaceship physics, weapons, rendering
 │   ├── powerup.c / .h  # Collectibles & duration timers
+│   ├── progress.c / .h # Persistent profile, medals & military career
 │   ├── projectile.c / .h# Player & enemy bullet pools
+│   ├── relic.c / .h    # Seven Vectors artifact ability engine
 │   ├── settings.c / .h # Settings serialization
 │   ├── utils.h         # Vector math, macros, random helpers
 │   └── world.c / .h    # 3-layer parallax starfield

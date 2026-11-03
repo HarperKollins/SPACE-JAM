@@ -17,12 +17,23 @@ You pilot the legendary **HK-01 Vanguard** prototype strike craft, flown by ace 
 
 - 📖 **[STORY_BIBLE.md](STORY_BIBLE.md)** — **The Complete Universe, Lore & Franchise Bible** (Parts 1–22): Galactic history, The Architects, The Hollow, The Echo, The Seven Vectors, Factions, The Odyssey, Crew, and Tech.
 - 🎬 **[EPISODE_1_SCRIPT.md](EPISODE_1_SCRIPT.md)** — **The Complete Episode I Script**: All 29 chapters, full character dialogues, Act I to Act III, Climax, and the 3 Canonical Endings.
+- 📐 **[docs/SYSTEMS_ARCHITECTURE.md](docs/SYSTEMS_ARCHITECTURE.md)** — High-performance zero-heap C architecture, memory pools, relic state machine, and asset pipeline.
 - 🌌 **[STORY.md](STORY.md)** — The quick-start universe overview and sector campaign guide.
 
 ---
 
 ## Features
 
+- 🌀 **The Seven Vectors Relic System** — Unlock and channel ancient Architect cosmic artifacts:
+  - **Gravity Vector (`Q`):** Spawns a collapsing gravitational singularity crushing hostile formations.
+  - **Temporal Vector (`E`):** Chrono-Stasis rewinds player hull by +35 HP and slows hostile time to 25%.
+  - **Void Vector (`F`):** Phase Dematerialization grants ethereal immunity to collisions for 3.5s.
+  - **Genesis Vector:** Passive +35% weapon damage overcharge and hyper-velocity piercing.
+  - **Ascendant Vector:** The mystical 7th key recovered from the Citadel Flagship, unlocking the secret True Ending.
+- 🌌 **Act III Climax & Three Canonical Endings** —
+  - **Ending A — The Human Future:** Shatter the Genesis Engine; Earth is saved and humanity charts its own destiny.
+  - **Ending B — The Eternal Order:** Claim the Synod Core; cold, everlasting peace across 40,000 worlds without freedom.
+  - **Ending C — The Last Vector (Canonical True Ending):** Transcendent ascension; Harper's consciousness becomes the immortal bridge guarding all living minds from The Hollow.
 - 🎭 **Cinematic Universe & Tactical Comms System** — Star Wars style opening crawl followed by an interactive **Tactical Military Radio Comms Transmission** (Freq 104.8 MHz) featuring custom character portraits (Harper Kollins, Commander Vance, Nadia, The Iron Archon, Dr. Amara, Mira), authentic radio static, typewriter dialogue, and battle orders.
 - 🪐 **Four Dynamic Celestial Sectors** —
   - **Sector 1 (Waves 1–3):** *Shattered Terra Novus* — Defend launching civilian refugee shuttles above a burning cradle world with glowing lava fissures.
@@ -62,6 +73,9 @@ You pilot the legendary **HK-01 Vanguard** prototype strike craft, flown by ace 
 | **Rotate Left** | `A` | `Left Arrow` |
 | **Rotate Right** | `D` | `Right Arrow` |
 | **Fire Weapons** | `SPACE` | `Left Mouse Button` |
+| **Relic: Gravity Singularity** | `Q` | Crushes enemies in 360px gravity vortex |
+| **Relic: Chrono-Stasis** | `E` | Rewinds +35 HP, slows hostiles to 25% |
+| **Relic: Void Phasing** | `F` | 3.5s ethereal immunity to physical collisions |
 | **Pause / Leave Game** | `ESC` | Click `[ESC] PAUSE / QUIT` in top-right |
 | **Toggle Controls Hint** | `F1` | Click `[F1] CONTROLS` in top-right |
 | **Navigate Menus** | `W` / `S` or `UP` / `DOWN` | Mouse Hover |

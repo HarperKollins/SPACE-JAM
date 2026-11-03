@@ -19,6 +19,7 @@ typedef enum {
     STATE_CONTROLS,
     STATE_MEDALS,
     STATE_VICTORY,
+    STATE_GENESIS_CHOICE,
     STATE_COUNT
 } GameState;
 
