@@ -4,6 +4,7 @@
  */
 #include "world.h"
 #include "utils.h"
+#include <stdio.h>
 #include <math.h>
 
 #ifndef M_PI
@@ -43,11 +44,41 @@ const char *Starfield_GetSectorSubtitle(WorldSector sector) {
     }
 }
 
+static Texture2D LoadWorldTextureWithFallback(const char *relPath) {
+    char buf[512];
+    if (FileExists(relPath)) return LoadTexture(relPath);
+
+    const char *appDir = GetApplicationDirectory();
+    if (appDir && appDir[0] != '\0') {
+        snprintf(buf, sizeof(buf), "%s%s", appDir, relPath);
+        if (FileExists(buf)) return LoadTexture(buf);
+
+        snprintf(buf, sizeof(buf), "%s../%s", appDir, relPath);
+        if (FileExists(buf)) return LoadTexture(buf);
+    }
+
+    snprintf(buf, sizeof(buf), "SPACE_JAM/%s", relPath);
+    if (FileExists(buf)) return LoadTexture(buf);
+
+    snprintf(buf, sizeof(buf), "../%s", relPath);
+    if (FileExists(buf)) return LoadTexture(buf);
+
+    return LoadTexture(relPath);
+}
+
 void Starfield_Init(Starfield *sf, int screenW, int screenH) {
     sf->time = 0.0f;
     sf->sector = SECTOR_TERRA_NOVUS;
     sf->warpTimer = 0.0f;
     sf->warpDuration = 1.6f;
+
+    /* Load Sector Panoramic Background Art */
+    sf->texturesLoaded = 0;
+    sf->texSectors[SECTOR_TERRA_NOVUS]  = LoadWorldTextureWithFallback("assets/textures/bg_sector1.jpg");
+    sf->texSectors[SECTOR_SOLAR_CORONA] = LoadWorldTextureWithFallback("assets/textures/bg_sector2.jpg");
+    sf->texSectors[SECTOR_XYLOS_RINGS]  = LoadWorldTextureWithFallback("assets/textures/bg_sector3.jpg");
+    sf->texSectors[SECTOR_SYNOD_CITADEL]= LoadWorldTextureWithFallback("assets/textures/bg_sector4.jpg");
+    if (sf->texSectors[0].id > 0) sf->texturesLoaded = 1;
 
     /* Initialize stars */
     for (int layer = 0; layer < STAR_LAYERS; layer++) {
@@ -75,6 +106,16 @@ void Starfield_Init(Starfield *sf, int screenW, int screenH) {
         sf->nebulae[i].speed  = RandFloat(8.0f, 18.0f);
         sf->nebulae[i].color  = (Color){ 10, 30, 80, 24 };
     }
+}
+
+void Starfield_Shutdown(Starfield *sf) {
+    for (int i = 0; i < SECTOR_COUNT; i++) {
+        if (sf->texSectors[i].id > 0) {
+            UnloadTexture(sf->texSectors[i]);
+            sf->texSectors[i].id = 0;
+        }
+    }
+    sf->texturesLoaded = 0;
 }
 
 void Starfield_SetSector(Starfield *sf, WorldSector sector, int triggerWarp) {
@@ -307,12 +348,22 @@ void Starfield_Draw(const Starfield *sf) {
     }
 
     /* 3. Celestial Planetary World Backdrop */
-    switch (sf->sector) {
-        case SECTOR_TERRA_NOVUS:  DrawTerraNovus(sw, sh, sf->time);   break;
-        case SECTOR_SOLAR_CORONA: DrawSolarCorona(sw, sh, sf->time);  break;
-        case SECTOR_XYLOS_RINGS:  DrawXylosRings(sw, sh, sf->time);   break;
-        case SECTOR_SYNOD_CITADEL:DrawSynodCitadel(sw, sh, sf->time); break;
-        default: break;
+    int secIdx = (int)sf->sector;
+    if (secIdx >= 0 && secIdx < SECTOR_COUNT && sf->texSectors[secIdx].id > 0) {
+        Texture2D tex = sf->texSectors[secIdx];
+        float driftX = sinf(sf->time * 0.04f) * 25.0f;
+        float driftY = cosf(sf->time * 0.03f) * 15.0f;
+        Rectangle src = { 0.0f, 0.0f, (float)tex.width, (float)tex.height };
+        Rectangle dst = { -25.0f + driftX, -20.0f + driftY, (float)sw + 50.0f, (float)sh + 40.0f };
+        DrawTexturePro(tex, src, dst, (Vector2){0, 0}, 0.0f, (Color){ 245, 245, 255, 255 });
+    } else {
+        switch (sf->sector) {
+            case SECTOR_TERRA_NOVUS:  DrawTerraNovus(sw, sh, sf->time);   break;
+            case SECTOR_SOLAR_CORONA: DrawSolarCorona(sw, sh, sf->time);  break;
+            case SECTOR_XYLOS_RINGS:  DrawXylosRings(sw, sh, sf->time);   break;
+            case SECTOR_SYNOD_CITADEL:DrawSynodCitadel(sw, sh, sf->time); break;
+            default: break;
+        }
     }
 
     /* 4. Multi-Layered Stars (Normal twinkling points OR Hyperspace Warp Speedlines) */

@@ -43,9 +43,12 @@ typedef struct {
     WorldSector sector;
     float       warpTimer;    /* > 0 during hyperspace warp jump */
     float       warpDuration;
+    Texture2D   texSectors[SECTOR_COUNT];
+    int         texturesLoaded;
 } Starfield;
 
 void        Starfield_Init(Starfield *sf, int screenW, int screenH);
+void        Starfield_Shutdown(Starfield *sf);
 void        Starfield_Update(Starfield *sf, float dt, int screenW, int screenH);
 void        Starfield_Draw(const Starfield *sf);
 void        Starfield_SetSector(Starfield *sf, WorldSector sector, int triggerWarp);

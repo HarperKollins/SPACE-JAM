@@ -58,6 +58,8 @@ typedef struct {
 } EnemyPool;
 
 void Enemies_Init(EnemyPool *pool);
+void Enemies_InitTextures(void);
+void Enemies_ShutdownTextures(void);
 void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
                     int screenW, int screenH);
 void Enemies_Draw(const EnemyPool *pool);

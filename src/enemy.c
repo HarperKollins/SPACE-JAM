@@ -4,10 +4,11 @@
 #include "enemy.h"
 #include "utils.h"
 #include "raylib.h"
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 
-/* ─── Type metadata lookup ───────────────────────────── */
+/* â”€â”€â”€ Type metadata lookup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 typedef struct { float speed; int health; float radius; int score; } EnemyMeta;
 
 static const EnemyMeta kMeta[ENEMY_TYPE_COUNT] = {
@@ -20,10 +21,55 @@ static const EnemyMeta kMeta[ENEMY_TYPE_COUNT] = {
     [CIVILIAN_SHUTTLE]  = {130.0f,            70,                  18.0f,          500},
 };
 
-/* ─── Pool management ────────────────────────────────── */
+static Texture2D g_enemyTex[ENEMY_TYPE_COUNT];
+static int       g_enemyTexLoaded = 0;
+
+static Texture2D LoadEnemyTextureWithFallback(const char *relPath) {
+    char buf[512];
+    if (FileExists(relPath)) return LoadTexture(relPath);
+
+    const char *appDir = GetApplicationDirectory();
+    if (appDir && appDir[0] != '\0') {
+        snprintf(buf, sizeof(buf), "%s%s", appDir, relPath);
+        if (FileExists(buf)) return LoadTexture(buf);
+
+        snprintf(buf, sizeof(buf), "%s../%s", appDir, relPath);
+        if (FileExists(buf)) return LoadTexture(buf);
+    }
+
+    snprintf(buf, sizeof(buf), "SPACE_JAM/%s", relPath);
+    if (FileExists(buf)) return LoadTexture(buf);
+
+    snprintf(buf, sizeof(buf), "../%s", relPath);
+    if (FileExists(buf)) return LoadTexture(buf);
+
+    return LoadTexture(relPath);
+}
+
+void Enemies_InitTextures(void) {
+    if (g_enemyTexLoaded) return;
+    g_enemyTex[ENEMY_SCOUT]       = LoadEnemyTextureWithFallback("assets/textures/enemy_scout.png");
+    g_enemyTex[ENEMY_INTERCEPTOR] = LoadEnemyTextureWithFallback("assets/textures/enemy_interceptor.png");
+    g_enemyTex[ENEMY_TANK]        = LoadEnemyTextureWithFallback("assets/textures/enemy_tank.png");
+    g_enemyTex[ENEMY_BOMBER]      = LoadEnemyTextureWithFallback("assets/textures/enemy_bomber.png");
+    g_enemyTex[ENEMY_BOSS]        = LoadEnemyTextureWithFallback("assets/textures/enemy_boss.png");
+    g_enemyTex[CIVILIAN_SHUTTLE]  = LoadEnemyTextureWithFallback("assets/textures/civilian_shuttle.png");
+    g_enemyTexLoaded = 1;
+}
+
+void Enemies_ShutdownTextures(void) {
+    for (int i = 0; i < ENEMY_TYPE_COUNT; i++) {
+        if (g_enemyTex[i].id > 0) {
+            UnloadTexture(g_enemyTex[i]);
+            g_enemyTex[i].id = 0;
+        }
+    }
+    g_enemyTexLoaded = 0;
+}
 
 void Enemies_Init(EnemyPool *pool) {
     memset(pool, 0, sizeof(*pool));
+    Enemies_InitTextures();
 }
 
 void Enemies_Clear(EnemyPool *pool) {
@@ -38,7 +84,7 @@ static int FindFreeEnemy(EnemyPool *pool) {
     return -1;
 }
 
-/* ─── Spawn ──────────────────────────────────────────── */
+/* â”€â”€â”€ Spawn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 static void InitEnemy(Enemy *e, EnemyType type, Vector2 pos) {
     memset(e, 0, sizeof(*e));
@@ -128,7 +174,7 @@ int Enemies_FindBoss(const EnemyPool *pool) {
     return -1;
 }
 
-/* ─── Damage ─────────────────────────────────────────── */
+/* â”€â”€â”€ Damage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 void Enemy_TakeDamage(Enemy *e, int dmg) {
     e->health -= dmg;
@@ -139,7 +185,7 @@ void Enemy_TakeDamage(Enemy *e, int dmg) {
     }
 }
 
-/* ─── AI helpers ─────────────────────────────────────── */
+/* â”€â”€â”€ AI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 static void ScoutAI(Enemy *e, Vector2 playerPos, float dt) {
     /* Scouts (Synod Dagger Interceptors): Fast dogfighters that keep standoff
@@ -251,11 +297,11 @@ static void BomberAI(Enemy *e, Vector2 playerPos, float dt) {
 
     Vector2 dir = Vec2Norm(Vec2Sub(playerPos, e->pos));
     if (dist < prefDist - 40.0f) {
-        /* Too close — retreat */
+        /* Too close â€” retreat */
         e->vel.x -= dir.x * BOMBER_SPEED * dt;
         e->vel.y -= dir.y * BOMBER_SPEED * dt;
     } else if (dist > prefDist + 40.0f) {
-        /* Too far — approach */
+        /* Too far â€” approach */
         e->vel.x += dir.x * BOMBER_SPEED * dt;
         e->vel.y += dir.y * BOMBER_SPEED * dt;
     } else {
@@ -302,7 +348,7 @@ static void BossAI(Enemy *e, Vector2 playerPos, int screenW, int screenH, float 
     e->rotation += diff * MIN(1.0f, dt * 2.0f);
 }
 
-/* ─── Update ─────────────────────────────────────────── */
+/* â”€â”€â”€ Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
                     int screenW, int screenH) {
@@ -369,7 +415,7 @@ void Enemies_Update(EnemyPool *pool, Vector2 playerPos, float dt,
     }
 }
 
-/* ─── Drawing ────────────────────────────────────────── */
+/* â”€â”€â”€ Drawing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* Diverse Faction Palettes: Eliminates visual monotony */
 static const Color kHullDark     = {  32,  38,  48, 255 }; /* Heavy battleship steel */
@@ -395,7 +441,7 @@ static const Color kSynodRedDark   = { 140,  15,  25, 255 };
 static const Color kSynodRedGlow   = { 255,  60,  60, 255 };
 
 static void DrawScout(const Enemy *e) {
-    /* Synod "Dagger" Recon Interceptor — Graphite & Electric Cyan */
+    /* Synod "Dagger" Recon Interceptor â€” Graphite & Electric Cyan */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -430,7 +476,7 @@ static void DrawScout(const Enemy *e) {
 }
 
 static void DrawInterceptor(const Enemy *e) {
-    /* Synod "Jackal" Heavy Fighter — Imperial Crimson & Gold */
+    /* Synod "Jackal" Heavy Fighter â€” Imperial Crimson & Gold */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -460,7 +506,7 @@ static void DrawInterceptor(const Enemy *e) {
 }
 
 static void DrawTank(const Enemy *e) {
-    /* Synod "Bulwark" Ironclad — Gunmetal & Industrial Hazard Amber */
+    /* Synod "Bulwark" Ironclad â€” Gunmetal & Industrial Hazard Amber */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -494,7 +540,7 @@ static void DrawTank(const Enemy *e) {
 }
 
 static void DrawBomber(const Enemy *e) {
-    /* Synod "Goliath" Siege Platform — Deep Cobalt & Acid Plasma Emerald */
+    /* Synod "Goliath" Siege Platform â€” Deep Cobalt & Acid Plasma Emerald */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -527,7 +573,7 @@ static void DrawBomber(const Enemy *e) {
 }
 
 static void DrawCivilianShuttle(const Enemy *e) {
-    /* Colonial Evacuation Shuttle — White & Humanitarian Blue */
+    /* Colonial Evacuation Shuttle â€” White & Humanitarian Blue */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -559,7 +605,7 @@ static void DrawCivilianShuttle(const Enemy *e) {
 }
 
 static void DrawBoss(const Enemy *e) {
-    /* Synod Dreadnought "Vindicator" — Monolithic Star Destroyer Capital Ship */
+    /* Synod Dreadnought "Vindicator" â€” Monolithic Star Destroyer Capital Ship */
     float rot = DEG2RAD(e->rotation);
     float c = cosf(rot), s = sinf(rot);
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
@@ -632,14 +678,29 @@ static void DrawBoss(const Enemy *e) {
 }
 
 void DrawEnemy(const Enemy *e) {
-    switch (e->type) {
-        case ENEMY_SCOUT:       DrawScout(e);           break;
-        case ENEMY_INTERCEPTOR: DrawInterceptor(e);     break;
-        case ENEMY_TANK:        DrawTank(e);            break;
-        case ENEMY_BOMBER:      DrawBomber(e);          break;
-        case ENEMY_BOSS:        DrawBoss(e);            break;
-        case CIVILIAN_SHUTTLE:  DrawCivilianShuttle(e); break;
-        default: break;
+    if (e->type > 0 && e->type < ENEMY_TYPE_COUNT && g_enemyTex[e->type].id > 0) {
+        Texture2D tex = g_enemyTex[e->type];
+        float drawSize = e->radius * 2.35f;
+        Rectangle src = { 0.0f, 0.0f, (float)tex.width, (float)tex.height };
+        Rectangle dst = { e->pos.x, e->pos.y, drawSize, drawSize };
+        Vector2 origin = { drawSize * 0.5f, drawSize * 0.5f };
+
+        Color tint = WHITE;
+        if (e->state == ESTATE_DYING) {
+            float alpha = 1.0f - (e->deathTimer / 0.45f);
+            tint = ColorAlpha(RED, CLAMP(alpha, 0.0f, 1.0f));
+        }
+        DrawTexturePro(tex, src, dst, origin, e->rotation, tint);
+    } else {
+        switch (e->type) {
+            case ENEMY_SCOUT:       DrawScout(e);           break;
+            case ENEMY_INTERCEPTOR: DrawInterceptor(e);     break;
+            case ENEMY_TANK:        DrawTank(e);            break;
+            case ENEMY_BOMBER:      DrawBomber(e);          break;
+            case ENEMY_BOSS:        DrawBoss(e);            break;
+            case CIVILIAN_SHUTTLE:  DrawCivilianShuttle(e); break;
+            default: break;
+        }
     }
 
     /* Health bar for non-scouts above threshold */

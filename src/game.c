@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ── Module-level game world state ──────────────────── */
+/* â”€â”€ Module-level game world state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static Starfield      g_stars;
 static Player         g_player;
 static EnemyPool      g_enemies;
@@ -54,7 +54,7 @@ static float g_shakeY = 0.0f;
 static float g_hintTimer = 0.0f;
 static int   g_hintVisible = 0;
 
-/* ── Lifecycle ───────────────────────────────────────── */
+/* â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 void Game_Init(GameContext *ctx) {
     Settings_Load(&ctx->settings);
@@ -96,6 +96,9 @@ void Game_Shutdown(GameContext *ctx) {
     HighScore_Insert(&g_scores, ctx->score, ctx->wave, "ACE");
     HighScore_Save(&g_scores);
     Settings_Save(&ctx->settings);
+    Player_Shutdown(&g_player);
+    Enemies_ShutdownTextures();
+    Starfield_Shutdown(&g_stars);
     Menu_Shutdown(&g_menu);
     Audio_Shutdown(&g_audio);
 }
@@ -212,7 +215,7 @@ void Game_NextWave(GameContext *ctx) {
     Asteroids_SetSpawnRate(&g_asteroids, ctx->wave);
 }
 
-/* ── Wave enemy type picker ─────────────────────────── */
+/* â”€â”€ Wave enemy type picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 static EnemyType PickEnemyType(int wave) {
     int r = GetRandomValue(0, 99);
@@ -235,7 +238,7 @@ static EnemyType PickEnemyType(int wave) {
     }
 }
 
-/* ── Screen shake ────────────────────────────────────── */
+/* â”€â”€ Screen shake â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 static void UpdateScreenShake(GameContext *ctx, float dt) {
     if (!ctx->settings.screenShake) { ctx->screenShake = 0.0f; return; }
@@ -245,7 +248,7 @@ static void UpdateScreenShake(GameContext *ctx, float dt) {
     g_shakeY = RandFloat(-mag, mag);
 }
 
-/* ── Update ──────────────────────────────────────────── */
+/* â”€â”€ Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 void Game_Update(GameContext *ctx, float dt) {
     int sw = GetScreenWidth();
@@ -264,27 +267,27 @@ void Game_Update(GameContext *ctx, float dt) {
     Audio_UpdateMusic(&g_audio, dt);
 
     switch (ctx->state) {
-        /* ─ Main Menu ─ */
+        /* â”€ Main Menu â”€ */
         case STATE_MAIN_MENU:
             Menu_UpdateMain(&g_menu, ctx, dt);
             break;
 
-        /* ─ Story Prologue Crawl ─ */
+        /* â”€ Story Prologue Crawl â”€ */
         case STATE_PROLOGUE:
             Menu_UpdatePrologue(&g_menu, ctx, dt);
             break;
 
-        /* ─ Tactical Comms Cutscene ─ */
+        /* â”€ Tactical Comms Cutscene â”€ */
         case STATE_COMMS:
             Menu_UpdateComms(&g_menu, ctx, dt);
             break;
 
-        /* ─ Service Record / Medals ─ */
+        /* â”€ Service Record / Medals â”€ */
         case STATE_MEDALS:
             Menu_UpdateMedals(&g_menu, ctx, dt);
             break;
 
-        /* ─ Playing ─ */
+        /* â”€ Playing â”€ */
         case STATE_PLAYING: {
             /* Pause (ESC or click HUD button) */
             Rectangle pauseBtn = { (float)(sw - 152), 32.0f, 144.0f, 24.0f };
@@ -549,17 +552,17 @@ void Game_Update(GameContext *ctx, float dt) {
             break;
         }
 
-        /* ─ Paused ─ */
+        /* â”€ Paused â”€ */
         case STATE_PAUSED:
             Menu_UpdatePause(&g_menu, ctx, dt);
             break;
 
-        /* ─ Game Over ─ */
+        /* â”€ Game Over â”€ */
         case STATE_GAME_OVER:
             Menu_UpdateGameOver(&g_menu, ctx, dt);
             break;
 
-        /* ─ Settings ─ */
+        /* â”€ Settings â”€ */
         case STATE_SETTINGS:
             Menu_UpdateSettings(&g_menu, ctx, dt);
             Audio_SetVolumes(&g_audio,
@@ -585,7 +588,7 @@ void Game_Update(GameContext *ctx, float dt) {
     }
 }
 
-/* ── Draw ────────────────────────────────────────────── */
+/* â”€â”€ Draw â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 void Game_Draw(GameContext *ctx) {
     int sw = GetScreenWidth();
