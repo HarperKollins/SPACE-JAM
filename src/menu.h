@@ -6,6 +6,7 @@
 
 #include "game.h"
 #include "progress.h"
+#include "raylib.h"
 
 typedef struct {
     int   currentLine;
@@ -23,9 +24,18 @@ typedef struct {
     float      prologueScroll;
     CommsState comms;
     int        selectedMedal;
+    /* Portrait textures (loaded once, freed on shutdown) */
+    Texture2D  texHarper;
+    Texture2D  texVance;
+    Texture2D  texArchon;
+    Texture2D  texNadia;
+    Texture2D  texAmara;
+    Texture2D  texMira;
+    int        portraitsLoaded;
 } MenuState;
 
 void Menu_Init(MenuState *ms);
+void Menu_Shutdown(MenuState *ms);
 void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt);
 void Menu_DrawMain(const MenuState *ms, const GameContext *ctx, int screenW, int screenH);
 

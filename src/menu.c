@@ -72,10 +72,53 @@ static void DrawTitle(int screenW, int screenH, float time) {
              (Color){0, 150, 255, 180});
 }
 
+/* ── Helper: Robust Asset Texture Loader with Multi-Path Fallback ── */
+static Texture2D LoadTextureWithFallback(const char *relPath) {
+    char buf[512];
+    if (FileExists(relPath)) return LoadTexture(relPath);
+
+    const char *appDir = GetApplicationDirectory();
+    if (appDir && appDir[0] != '\0') {
+        snprintf(buf, sizeof(buf), "%s%s", appDir, relPath);
+        if (FileExists(buf)) return LoadTexture(buf);
+
+        snprintf(buf, sizeof(buf), "%s../%s", appDir, relPath);
+        if (FileExists(buf)) return LoadTexture(buf);
+    }
+
+    snprintf(buf, sizeof(buf), "SPACE_JAM/%s", relPath);
+    if (FileExists(buf)) return LoadTexture(buf);
+
+    snprintf(buf, sizeof(buf), "../%s", relPath);
+    if (FileExists(buf)) return LoadTexture(buf);
+
+    return LoadTexture(relPath);
+}
+
 /* ── Menu init ───────────────────────────────────────── */
 
 void Menu_Init(MenuState *ms) {
     memset(ms, 0, sizeof(*ms));
+
+    /* Load character portrait textures with resilient path fallback */
+    ms->portraitsLoaded = 0;
+    ms->texHarper = LoadTextureWithFallback("assets/portraits/harper.jpg");
+    ms->texVance  = LoadTextureWithFallback("assets/portraits/vance.jpg");
+    ms->texArchon = LoadTextureWithFallback("assets/portraits/archon.jpg");
+    ms->texNadia  = LoadTextureWithFallback("assets/portraits/nadia.jpg");
+    ms->texAmara  = LoadTextureWithFallback("assets/portraits/amara.jpg");
+    ms->texMira   = LoadTextureWithFallback("assets/portraits/mira.jpg");
+    if (ms->texHarper.id > 0) ms->portraitsLoaded = 1;
+}
+
+void Menu_Shutdown(MenuState *ms) {
+    if (ms->texHarper.id > 0) UnloadTexture(ms->texHarper);
+    if (ms->texVance.id  > 0) UnloadTexture(ms->texVance);
+    if (ms->texArchon.id > 0) UnloadTexture(ms->texArchon);
+    if (ms->texNadia.id  > 0) UnloadTexture(ms->texNadia);
+    if (ms->texAmara.id  > 0) UnloadTexture(ms->texAmara);
+    if (ms->texMira.id   > 0) UnloadTexture(ms->texMira);
+    ms->portraitsLoaded = 0;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -669,30 +712,127 @@ void Menu_DrawPrologue(const MenuState *ms, int screenW, int screenH) {
    TACTICAL RADIO COMMUNICATIONS CUTSCENE
 ══════════════════════════════════════════════════════ */
 
+typedef enum {
+    SPEAKER_VANCE = 0,
+    SPEAKER_HARPER,
+    SPEAKER_ARCHON,
+    SPEAKER_NADIA,
+    SPEAKER_AMARA,
+    SPEAKER_MIRA
+} SpeakerId;
+
 typedef struct {
+    SpeakerId   speakerId;
     const char *speaker;
     const char *callsign;
     const char *text;
-    int         isPlayer;
+    int         onRight; /* 0 = left panel, 1 = right panel */
 } CommsDialogue;
 
 static const CommsDialogue kCommsDialogue[] = {
-    { "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
+    { SPEAKER_VANCE, "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
       "Vanguard-1, do you copy? Harper, do you read me?", 0 },
 
-    { "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
       "Loud and clear, Command. Atmospheric descent complete. What is the tactical situation?", 1 },
 
-    { "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
-      "It is a catastrophic breach! The Iron Synod has broken our orbital grid. Terra Novus is in flames.", 0 },
+    { SPEAKER_VANCE, "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
+      "Catastrophic breach! The Iron Synod armada has broken our orbital defense grid. Cities are burning.", 0 },
 
-    { "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
-      "Civilian evacuation shuttles are scrambling for orbit! Synod hunter wings have them pinned down. You are their only escort! Protect the fleet, Ace!", 0 },
+    { SPEAKER_NADIA, "NADIA", "EARTH CIVILIAN CORPS // FREQUENCY INTERCEPT",
+      "Harper, be careful! These Synod signatures aren't standard invaders—they are scanning for something ancient!", 0 },
 
-    { "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
+      "Nadia, get to the evacuation transport with Mira and Mom! I'm going to hold the orbital corridor open.", 1 },
+
+    { SPEAKER_VANCE, "COMMANDER VANCE", "FLEET COMMAND // TERRA NOVUS DEFENSE",
+      "Refugee shuttles are launching through the firestorm! Synod hunter wings are vectoring to intercept. Protect those transports, Ace!", 0 },
+
+    { SPEAKER_HARPER, "HARPER KOLLINS", "CALL-SIGN: VANGUARD-1 // STRIKE CRAFT HK-01",
       "Weapons hot. Twin wingtip autocannons primed. No Imperial warship touches those shuttles. Engaging now!", 1 },
 };
-#define COMMS_TOTAL_LINES 5
+#define COMMS_TOTAL_LINES 7
+
+static void DrawSpeakerPortrait(const MenuState *ms, SpeakerId speaker,
+                                const char *name, const char *role,
+                                int x, int y, int w, int h,
+                                int isActive, float freqAnim) {
+    Texture2D tex = {0};
+    Color primary = (Color){0, 220, 255, 255};
+    Color subCol  = (Color){100, 150, 200, 180};
+
+    switch (speaker) {
+        case SPEAKER_VANCE:
+            tex = ms->texVance;
+            primary = (Color){0, 220, 255, 255};
+            subCol  = (Color){100, 150, 200, 180};
+            break;
+        case SPEAKER_HARPER:
+            tex = ms->texHarper;
+            primary = (Color){255, 200, 40, 255};
+            subCol  = (Color){200, 180, 100, 180};
+            break;
+        case SPEAKER_ARCHON:
+            tex = ms->texArchon;
+            primary = (Color){255, 60, 80, 255};
+            subCol  = (Color){200, 100, 140, 180};
+            break;
+        case SPEAKER_NADIA:
+            tex = ms->texNadia;
+            primary = (Color){255, 175, 90, 255};
+            subCol  = (Color){220, 150, 120, 180};
+            break;
+        case SPEAKER_AMARA:
+            tex = ms->texAmara;
+            primary = (Color){180, 130, 255, 255};
+            subCol  = (Color){160, 140, 210, 180};
+            break;
+        case SPEAKER_MIRA:
+            tex = ms->texMira;
+            primary = (Color){0, 240, 200, 255};
+            subCol  = (Color){120, 200, 180, 180};
+            break;
+    }
+
+    Color borderCol = isActive ? primary : (Color){60, 80, 110, 140};
+    DrawRectangleRounded((Rectangle){(float)x, (float)y, (float)w, (float)h}, 0.08f, 6,
+                         (Color){6, 12, 28, 230});
+    DrawRectangleRoundedLines((Rectangle){(float)x, (float)y, (float)w, (float)h}, 0.08f, 6, borderCol);
+
+    /* Portrait Image or animated Waveform fallback */
+    if (ms->portraitsLoaded && tex.id > 0) {
+        int imgSize = h - 40;
+        float scale = (float)imgSize / (float)(tex.height > 0 ? tex.height : 1);
+        int dstW = (int)((float)tex.width * scale);
+        if (dstW > w - 8) { scale = (float)(w - 8) / (float)tex.width; dstW = w - 8; }
+        int dstH = (int)((float)tex.height * scale);
+        int imgX = x + w / 2 - dstW / 2;
+        Color tint = isActive ? WHITE : (Color){120, 140, 160, 170};
+        DrawTexturePro(tex,
+                       (Rectangle){0, 0, (float)tex.width, (float)tex.height},
+                       (Rectangle){(float)imgX, (float)(y + 4), (float)dstW, (float)dstH},
+                       (Vector2){0, 0}, 0.0f, tint);
+    } else {
+        for (int bar = 0; bar < 32; bar++) {
+            float waveH = isActive ? fabsf(sinf(freqAnim + (float)bar * 0.45f)) * 28.0f + 4.0f : 4.0f;
+            int wx = x + 24 + bar * 7;
+            DrawLine(wx, y + 95 - (int)(waveH * 0.5f), wx, y + 95 + (int)(waveH * 0.5f),
+                     isActive ? primary : (Color){40, 70, 100, 140});
+        }
+    }
+
+    /* Nameplate */
+    DrawText(name, x + 8, y + h - 36, 13, isActive ? primary : (Color){140, 160, 180, 180});
+    DrawText(role, x + 8, y + h - 20, 10, subCol);
+
+    /* Active Pulse Border */
+    if (isActive) {
+        float pulse = 0.5f + 0.5f * sinf(freqAnim * 1.6f);
+        DrawRectangleRoundedLines(
+            (Rectangle){(float)(x - 2), (float)(y - 2), (float)(w + 4), (float)(h + 4)},
+            0.08f, 6, ColorAlpha(primary, 0.4f + pulse * 0.5f));
+    }
+}
 
 void Menu_StartComms(MenuState *ms) {
     ms->comms.currentLine   = 0;
@@ -773,76 +913,106 @@ void Menu_DrawComms(const MenuState *ms, int screenW, int screenH) {
     int htw = MeasureText(headerTitle, 14);
     DrawText(headerTitle, screenW / 2 - htw / 2, topY - 5, 14, (Color){ 0, 240, 200, 255 });
 
-    /* 2. Speaker Portrait Panels (Commander Vance on Left, Harper on Right) */
-    int panW = 280, panH = 170;
-    int panY = (int)((float)screenH * 0.18f);
-    int leftX = (int)((float)screenW * 0.12f);
+    /* 2. Speaker Portrait Panels (Incoming on Left, Harper on Right) */
+    int panW = 260, panH = 190;
+    int panY = (int)((float)screenH * 0.17f);
+    int leftX = (int)((float)screenW * 0.10f);
     int rightX = screenW - leftX - panW;
 
-    /* Left Panel: Vance */
-    int vanceActive = (cd->isPlayer == 0);
-    Color vanceBorder = vanceActive ? (Color){ 0, 220, 255, 255 } : (Color){ 60, 80, 110, 140 };
-    DrawRectangleRounded((Rectangle){ (float)leftX, (float)panY, (float)panW, (float)panH }, 0.08f, 6,
-                         (Color){ 6, 12, 28, 230 });
-    DrawRectangleRoundedLines((Rectangle){ (float)leftX, (float)panY, (float)panW, (float)panH }, 0.08f, 6, vanceBorder);
-    DrawText("COMMANDER VANCE", leftX + 16, panY + 14, 15, vanceActive ? (Color){ 0, 220, 255, 255 } : (Color){ 140, 160, 180, 180 });
-    DrawText("FLEET HQ // SECTOR 1", leftX + 16, panY + 34, 11, (Color){ 100, 150, 200, 180 });
+    /* Determine speaker on left panel: if current dialogue is Nadia, show Nadia; else Vance */
+    SpeakerId leftSpeaker = (cd->speakerId == SPEAKER_NADIA) ? SPEAKER_NADIA :
+                            (cd->speakerId == SPEAKER_ARCHON) ? SPEAKER_ARCHON : SPEAKER_VANCE;
+    const char *leftName  = (cd->speakerId == SPEAKER_NADIA) ? "NADIA" :
+                            (cd->speakerId == SPEAKER_ARCHON) ? "THE IRON ARCHON" : "COMMANDER VANCE";
+    const char *leftRole  = (cd->speakerId == SPEAKER_NADIA) ? "CIVILIAN OPS // EARTH" :
+                            (cd->speakerId == SPEAKER_ARCHON) ? "SUPREME RULER // SYNOD" : "FLEET HQ // SECTOR 1";
+    int leftActive        = (cd->onRight == 0);
 
-    /* Oscillating Waveform for Vance */
-    for (int w = 0; w < 32; w++) {
-        float h = vanceActive ? fabsf(sinf(ms->comms.freqAnim + (float)w * 0.45f)) * 28.0f + 4.0f : 4.0f;
-        int wx = leftX + 24 + w * 7;
-        DrawLine(wx, panY + 110 - (int)(h * 0.5f), wx, panY + 110 + (int)(h * 0.5f),
-                 vanceActive ? (Color){ 0, 240, 255, 220 } : (Color){ 40, 70, 100, 140 });
-    }
+    DrawSpeakerPortrait(ms, leftSpeaker, leftName, leftRole,
+                        leftX, panY, panW, panH, leftActive, ms->comms.freqAnim);
 
     /* Right Panel: Harper Kollins */
-    int harperActive = (cd->isPlayer == 1);
-    Color harperBorder = harperActive ? (Color){ 255, 200, 40, 255 } : (Color){ 60, 80, 110, 140 };
-    DrawRectangleRounded((Rectangle){ (float)rightX, (float)panY, (float)panW, (float)panH }, 0.08f, 6,
-                         (Color){ 6, 12, 28, 230 });
-    DrawRectangleRoundedLines((Rectangle){ (float)rightX, (float)panY, (float)panW, (float)panH }, 0.08f, 6, harperBorder);
-    DrawText("HARPER KOLLINS", rightX + 16, panY + 14, 15, harperActive ? (Color){ 255, 200, 40, 255 } : (Color){ 140, 160, 180, 180 });
-    DrawText("PILOT // CALL-SIGN: VANGUARD-1", rightX + 16, panY + 34, 11, (Color){ 200, 180, 100, 180 });
-
-    /* Oscillating Waveform for Harper */
-    for (int w = 0; w < 32; w++) {
-        float h = harperActive ? fabsf(sinf(ms->comms.freqAnim * 1.2f + (float)w * 0.5f)) * 28.0f + 4.0f : 4.0f;
-        int wx = rightX + 24 + w * 7;
-        DrawLine(wx, panY + 110 - (int)(h * 0.5f), wx, panY + 110 + (int)(h * 0.5f),
-                 harperActive ? (Color){ 255, 200, 40, 220 } : (Color){ 70, 70, 100, 140 });
-    }
+    int rightActive = (cd->onRight == 1);
+    DrawSpeakerPortrait(ms, SPEAKER_HARPER, "HARPER KOLLINS", "PILOT // VANGUARD-1",
+                        rightX, panY, panW, panH, rightActive, ms->comms.freqAnim);
 
     /* 3. Center Dialogue Box */
     int boxW = (int)((float)screenW * 0.76f);
-    int boxH = 175;
+    int boxH = 185;
     int boxX = screenW / 2 - boxW / 2;
-    int boxY = (int)((float)screenH * 0.52f);
+    int boxY = (int)((float)screenH * 0.53f);
 
     DrawRectangleRounded((Rectangle){ (float)boxX, (float)boxY, (float)boxW, (float)boxH }, 0.06f, 6,
                          (Color){ 4, 8, 22, 240 });
     DrawRectangleRoundedLines((Rectangle){ (float)boxX, (float)boxY, (float)boxW, (float)boxH }, 0.06f, 6,
-                              cd->isPlayer ? (Color){ 255, 180, 30, 200 } : (Color){ 0, 180, 255, 200 });
+                              cd->onRight ? (Color){ 255, 180, 30, 200 } : (Color){ 0, 180, 255, 200 });
 
     /* Speaker Badge */
-    DrawText(cd->speaker, boxX + 24, boxY + 18, 16, cd->isPlayer ? (Color){ 255, 215, 0, 255 } : (Color){ 0, 220, 255, 255 });
-    DrawText(cd->callsign, boxX + 24, boxY + 40, 11, (Color){ 140, 160, 190, 180 });
-    DrawLine(boxX + 20, boxY + 58, boxX + boxW - 20, boxY + 58, (Color){ 30, 60, 100, 180 });
+    DrawText(cd->speaker,  boxX + 24, boxY + 12, 16,
+             cd->onRight ? (Color){ 255, 215, 0, 255 } : (Color){ 0, 220, 255, 255 });
+    DrawText(cd->callsign, boxX + 24, boxY + 32, 11, (Color){ 140, 160, 190, 180 });
+    DrawLine(boxX + 20, boxY + 50, boxX + boxW - 20, boxY + 50, (Color){ 30, 60, 100, 180 });
 
-    /* Typewriter Substring */
+    /* Typewriter Substring — word-wrapped across up to 3 lines */
     char subBuf[512];
     int len = ms->comms.charsRevealed;
     if (len > (int)sizeof(subBuf) - 1) len = (int)sizeof(subBuf) - 1;
     strncpy(subBuf, cd->text, (size_t)len);
     subBuf[len] = '\0';
 
-    /* Draw Dialogue Text (Wrapped) */
-    DrawText(subBuf, boxX + 24, boxY + 76, 18, (Color){ 235, 245, 255, 255 });
+    /* Manual word-wrap: split into lines of at most ~maxCharsPerLine chars */
+    int textFs   = 17;
+    int maxWidth = boxW - 52; /* usable text width */
+    int textX    = boxX + 26;
+    int textY    = boxY + 60;
+    int lineH    = textFs + 6;
 
-    /* Blinking Terminal Cursor */
-    if ((int)(GetTime() * 4.0f) % 2 == 0) {
-        int curOffset = MeasureText(subBuf, 18);
-        DrawRectangle(boxX + 26 + curOffset, boxY + 76, 9, 18, (Color){ 0, 240, 200, 240 });
+    /* Simple greedy word-wrap */
+    char wrapped[512];
+    int wlen = 0;
+    int lineStart = 0;
+    for (int i = 0; i <= len; i++) {
+        if (i == len || subBuf[i] == ' ' || subBuf[i] == '\0') {
+            /* Check if this word fits */
+            int segLen = i - lineStart;
+            char testBuf[512];
+            if (wlen + segLen < (int)sizeof(testBuf)) {
+                strncpy(testBuf, wrapped, wlen);
+                strncpy(testBuf + wlen, subBuf + lineStart, segLen);
+                testBuf[wlen + segLen] = '\0';
+                if (MeasureText(testBuf, textFs) > maxWidth) {
+                    /* Wrap: replace last space with newline */
+                    if (wlen > 0 && wrapped[wlen - 1] == ' ') wrapped[wlen - 1] = '\n';
+                }
+            }
+            /* Copy word + space */
+            for (int k = lineStart; k < i && wlen < 510; k++) wrapped[wlen++] = subBuf[k];
+            if (i < len && wlen < 510) wrapped[wlen++] = subBuf[i]; /* space */
+            lineStart = i + 1;
+        }
+    }
+    wrapped[wlen] = '\0';
+
+    /* Draw each line */
+    const char *p = wrapped;
+    int lineIdx = 0;
+    while (*p && lineIdx < 5) {
+        char lineBuf[256];
+        int li = 0;
+        while (*p && *p != '\n' && li < (int)sizeof(lineBuf) - 1) {
+            lineBuf[li++] = *p++;
+        }
+        lineBuf[li] = '\0';
+        if (*p == '\n') p++;
+        DrawText(lineBuf, textX, textY + lineIdx * lineH, textFs, (Color){ 235, 245, 255, 255 });
+        lineIdx++;
+    }
+
+    /* Blinking Terminal Cursor after last char */
+    if ((int)(GetTime() * 4.0f) % 2 == 0 && lineIdx > 0) {
+        /* Place cursor at end of last line drawn */
+        DrawRectangle(textX + 4, textY + (lineIdx - 1) * lineH + textFs - 4, 8, 16,
+                      (Color){ 0, 240, 200, 240 });
     }
 
     /* 4. Navigation Prompt */

@@ -93,6 +93,7 @@ void Game_Shutdown(GameContext *ctx) {
     HighScore_Insert(&g_scores, ctx->score, ctx->wave, "ACE");
     HighScore_Save(&g_scores);
     Settings_Save(&ctx->settings);
+    Menu_Shutdown(&g_menu);
     Audio_Shutdown(&g_audio);
 }
 
