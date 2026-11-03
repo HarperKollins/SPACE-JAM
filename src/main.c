@@ -13,6 +13,9 @@
 #include <math.h>
 
 int main(void) {
+    /* Always ensure working directory matches the executable location for assets & save data */
+    ChangeDirectory(GetApplicationDirectory());
+
     /* Load settings before window creation so we can set resolution */
     GameSettings preSettings;
     Settings_LoadDefaults(&preSettings);

@@ -42,7 +42,7 @@ ifeq ($(OS),Windows_NT)
     RAYLIB_LIB     := /ucrt64/lib
     RAYLIB_LIBS    := -lraylib -lopengl32 -lgdi32 -lwinmm
     EXTRA_CFLAGS   :=
-    EXTRA_LDFLAGS  :=
+    EXTRA_LDFLAGS  := -mwindows
     RES_OBJ        := $(BUILD_DIR)/spacejam_res.o
     EXTRA_OBJS     := $(RES_OBJ)
 else
