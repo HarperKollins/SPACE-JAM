@@ -23,6 +23,7 @@ int main(void) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(preSettings.screenWidth, preSettings.screenHeight, GAME_TITLE);
+    Font_Init();
 
     if (preSettings.fullscreen) ToggleFullscreen();
 
@@ -47,6 +48,7 @@ int main(void) {
     }
 
     Game_Shutdown(&ctx);
+    Font_Shutdown();
     CloseWindow();
     return 0;
 }

@@ -8,6 +8,7 @@
 #define SPACEJAM_CONFIG_H
 
 #include <stdint.h>
+#include "font_manager.h"
 
 /* ----------------------------------------------------------
    Window / Display

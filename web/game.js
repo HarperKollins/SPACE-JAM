@@ -918,20 +918,20 @@
       // Sector Directive
       const secTitles = ['SECTOR 1 // TERRA NOVUS: DEFEND FLEET', 'SECTOR 2 // SOLAR CORONA: PURGE SIEGE', 'SECTOR 3 // XYLOS: DESTROY BLOCKADE', 'SECTOR 4 // CITADEL: ASSAULT CORE'];
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 13px monospace';
+      CTX.font = 'bold 13px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(secTitles[this.sector], 28, 28);
 
       // Score
       CTX.fillStyle = '#ffdd44';
-      CTX.font = 'bold 22px monospace';
+      CTX.font = 'bold 22px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(`SCORE: ${this.score}`, W * 0.45, 30);
       CTX.fillStyle = '#88bbdd';
-      CTX.font = '12px monospace';
+      CTX.font = '12px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(`HI: ${this.highScore}`, W * 0.58, 29);
 
       // Wave
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 16px monospace';
+      CTX.font = 'bold 16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(`WAVE ${this.wave}`, W - 150, 29);
 
       // Hull Bar
@@ -943,7 +943,7 @@
       CTX.strokeStyle = '#00e5ff';
       CTX.strokeRect(20, H - 54, 220, 16);
       CTX.fillStyle = '#ffffff';
-      CTX.font = 'bold 11px monospace';
+      CTX.font = 'bold 11px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(`HULL ${Math.round(hFrac * 100)}%`, 26, H - 42);
 
       // Tactical Mini-Radar Scanner (Bottom Center)
@@ -990,7 +990,7 @@
         CTX.strokeStyle = rel.cd <= 0 ? '#00ffff' : '#445566';
         CTX.strokeRect(bx, by, 98, 28);
         CTX.fillStyle = rel.cd <= 0 ? '#00ffff' : '#778899';
-        CTX.font = 'bold 11px monospace';
+        CTX.font = 'bold 11px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(rel.cd <= 0 ? rel.key : `${Math.ceil(rel.cd)}s`, bx + 12, by + 18);
       });
     }
@@ -1000,24 +1000,24 @@
       CTX.fillRect(0, 0, W, H);
 
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 44px sans-serif';
+      CTX.font = 'bold 44px 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.textAlign = 'center';
       CTX.fillText('SPACE JAM: THE LAST VECTOR', W / 2, H * 0.38);
 
       CTX.fillStyle = '#ffd700';
-      CTX.font = '16px monospace';
+      CTX.font = '16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('CREATED BY HARPER KOLLINS', W / 2, H * 0.44);
 
       CTX.fillStyle = '#ffffff';
-      CTX.font = 'bold 20px monospace';
+      CTX.font = 'bold 20px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('[ PRESS ENTER OR SPACE TO LAUNCH SORTIE ]', W / 2, H * 0.58);
 
       CTX.fillStyle = '#00ffcc';
-      CTX.font = 'bold 16px monospace';
+      CTX.font = 'bold 16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('[ H ] HANGAR UPGRADE WORKSHOP   |   [ C ] GALACTIC CODEX & LORE', W / 2, H * 0.65);
 
       CTX.fillStyle = '#88aacc';
-      CTX.font = '13px monospace';
+      CTX.font = '13px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('FLIGHT: WASD/ARROWS | SPACE/A = FIRE | C/RB = TORPEDO | SHIFT/LT = NITRO | Q,E,F = RELICS', W / 2, H * 0.74);
       CTX.textAlign = 'left';
     }
@@ -1029,12 +1029,12 @@
 
       // Header
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 28px monospace';
+      CTX.font = 'bold 28px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.textAlign = 'center';
       CTX.fillText('HANGAR BAY & UPGRADE WORKSHOP // HARPER\'S WORKBENCH', W / 2, 54);
 
       CTX.fillStyle = '#ffd700';
-      CTX.font = 'bold 18px monospace';
+      CTX.font = 'bold 18px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(`SALVAGE CREDITS: ${this.credits} CR`, W / 2, 88);
 
       const items = [
@@ -1060,15 +1060,15 @@
 
         CTX.textAlign = 'left';
         CTX.fillStyle = isSel ? '#ffffff' : '#ccddff';
-        CTX.font = 'bold 16px monospace';
+        CTX.font = 'bold 16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(`${item.name}`, W * 0.14, iy + 26);
 
         CTX.fillStyle = '#00ffcc';
-        CTX.font = '13px monospace';
+        CTX.font = '13px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(item.stat, W * 0.14, iy + 48);
 
         CTX.fillStyle = '#88aacc';
-        CTX.font = '11px sans-serif';
+        CTX.font = '11px 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(item.desc, W * 0.14, iy + 68);
 
         // Level pips
@@ -1080,14 +1080,14 @@
         // Cost / status
         CTX.textAlign = 'right';
         CTX.fillStyle = isMax ? '#888888' : (this.credits >= this.upgradeCosts[lvl] ? '#ffd700' : '#ff4444');
-        CTX.font = 'bold 15px monospace';
+        CTX.font = 'bold 15px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(cost, W * 0.85, iy + 30);
       });
 
       // Controls footer
       CTX.textAlign = 'center';
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 14px monospace';
+      CTX.font = 'bold 14px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('[ W / S / UP / DOWN ] SELECT | [ ENTER / SPACE / GAMEPAD A ] PURCHASE | [ ESC / B ] RETURN', W / 2, H - 40);
       CTX.textAlign = 'left';
     }
@@ -1098,7 +1098,7 @@
 
       // Tabs
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 26px monospace';
+      CTX.font = 'bold 26px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.textAlign = 'center';
       CTX.fillText('THE GALACTIC ARCHIVES & CLASSIFIED CODEX', W / 2, 46);
 
@@ -1106,7 +1106,7 @@
       tabs.forEach((t, i) => {
         const tx = W * 0.22 + i * 260;
         CTX.fillStyle = (this.codexTab === i) ? '#ffd700' : '#00ffff';
-        CTX.font = (this.codexTab === i) ? 'bold 16px monospace' : '15px monospace';
+        CTX.font = (this.codexTab === i) ? 'bold 16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif' : '15px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(t, tx, 82);
       });
 
@@ -1129,11 +1129,11 @@
           CTX.strokeRect(W * 0.1, ly, W * 0.8, 98);
 
           CTX.fillStyle = '#ffd700';
-          CTX.font = 'bold 15px monospace';
+          CTX.font = 'bold 15px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
           CTX.fillText(l.title, W * 0.12, ly + 28);
 
           CTX.fillStyle = '#ddeeff';
-          CTX.font = '13px sans-serif';
+          CTX.font = '13px 'Segoe UI', system-ui, -apple-system, sans-serif';
           CTX.fillText(l.text, W * 0.12, ly + 58);
         });
       } else if (this.codexTab === 1) {
@@ -1161,28 +1161,28 @@
           CTX.drawImage(pImg, px + 10, py + 10, pw - 20, ph - 20);
         } else {
           CTX.fillStyle = '#00e5ff';
-          CTX.font = 'bold 20px monospace';
+          CTX.font = 'bold 20px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
           CTX.fillText(char.name.toUpperCase(), px + 20, py + ph / 2);
         }
 
         // Dossier Info on Right
         const dx = W * 0.38, dy = 120;
         CTX.fillStyle = '#ffd700';
-        CTX.font = 'bold 24px monospace';
+        CTX.font = 'bold 24px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(char.name.toUpperCase(), dx, dy + 32);
 
         CTX.fillStyle = '#00ffff';
-        CTX.font = 'bold 15px monospace';
+        CTX.font = 'bold 15px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(`ROLE: ${char.role}`, dx, dy + 68);
         CTX.fillText(`ORIGIN: ${char.origin} | AGE: ${char.age}`, dx, dy + 96);
 
         CTX.fillStyle = '#ccddee';
-        CTX.font = '15px sans-serif';
+        CTX.font = '15px 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(char.bio, dx, dy + 145);
 
         // Navigation hint
         CTX.fillStyle = '#ffd700';
-        CTX.font = 'bold 14px monospace';
+        CTX.font = 'bold 14px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(`[ A / D / LEFT / RIGHT ] PREVIOUS / NEXT DOSSIER (${(this.codexItem % chars.length) + 1} / ${chars.length})`, dx, dy + 280);
       } else {
         // Vessels tab
@@ -1200,15 +1200,15 @@
           CTX.strokeRect(W * 0.1, sy, W * 0.8, 105);
 
           CTX.fillStyle = '#ffd700';
-          CTX.font = 'bold 16px monospace';
+          CTX.font = 'bold 16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
           CTX.fillText(s.name, W * 0.12, sy + 32);
 
           CTX.fillStyle = '#00ffff';
-          CTX.font = 'bold 13px monospace';
+          CTX.font = 'bold 13px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
           CTX.fillText(`CLASS: ${s.type}`, W * 0.12, sy + 58);
 
           CTX.fillStyle = '#ccddee';
-          CTX.font = '13px sans-serif';
+          CTX.font = '13px 'Segoe UI', system-ui, -apple-system, sans-serif';
           CTX.fillText(s.desc, W * 0.12, sy + 84);
         });
       }
@@ -1216,7 +1216,7 @@
       // Footer
       CTX.textAlign = 'center';
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 14px monospace';
+      CTX.font = 'bold 14px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('[ 1 / 2 / 3 ] SWITCH ARCHIVES TAB | [ ESC / B ] RETURN TO COMMAND DECK', W / 2, H - 40);
       CTX.textAlign = 'left';
     }
@@ -1226,16 +1226,16 @@
       CTX.fillRect(0, 0, W, H);
 
       CTX.fillStyle = '#ff2244';
-      CTX.font = 'bold 48px sans-serif';
+      CTX.font = 'bold 48px 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.textAlign = 'center';
       CTX.fillText('VANGUARD DESTROYED', W / 2, H * 0.4);
 
       CTX.fillStyle = '#ffffff';
-      CTX.font = '22px monospace';
+      CTX.font = '22px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText(`FINAL SCORE: ${this.score}`, W / 2, H * 0.5);
 
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 18px monospace';
+      CTX.font = 'bold 18px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('[ PRESS ENTER TO RETRY MISSION ]', W / 2, H * 0.64);
       CTX.textAlign = 'left';
     }
@@ -1245,12 +1245,12 @@
       CTX.fillRect(0, 0, W, H);
 
       CTX.fillStyle = '#00ffff';
-      CTX.font = 'bold 28px monospace';
+      CTX.font = 'bold 28px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.textAlign = 'center';
       CTX.fillText('THE GENESIS ENGINE // THE ARCHITECT NEXUS', W / 2, 80);
 
       CTX.fillStyle = '#ffffff';
-      CTX.font = '14px sans-serif';
+      CTX.font = '14px 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('THE CITADEL HAS FALLEN. HARPER KOLLINS STANDS BEFORE THE CORE OF CONSCIOUSNESS.', W / 2, 115);
 
       const choices = [
@@ -1267,20 +1267,20 @@
         CTX.strokeRect(W * 0.15, cy, W * 0.7, 85);
 
         CTX.fillStyle = '#ffd700';
-        CTX.font = 'bold 18px monospace';
+        CTX.font = 'bold 18px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(c.num, W * 0.19, cy + 32);
 
         CTX.fillStyle = '#00ffff';
-        CTX.font = 'bold 16px monospace';
+        CTX.font = 'bold 16px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(c.title, W * 0.5, cy + 32);
 
         CTX.fillStyle = '#ccddee';
-        CTX.font = '13px sans-serif';
+        CTX.font = '13px 'Segoe UI', system-ui, -apple-system, sans-serif';
         CTX.fillText(c.desc, W * 0.5, cy + 62);
       });
 
       CTX.fillStyle = '#ffaa00';
-      CTX.font = 'bold 15px monospace';
+      CTX.font = 'bold 15px 'Segoe UI', system-ui, -apple-system, 'Segoe UI', system-ui, -apple-system, sans-serif';
       CTX.fillText('[ PRESS 1, 2, OR 3 TO CHOOSE YOUR DESTINY ]', W / 2, H - 70);
       CTX.textAlign = 'left';
     }

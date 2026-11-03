@@ -28,7 +28,8 @@ SOURCES := \
 	$(SRC_DIR)/progress.c   \
 	$(SRC_DIR)/relic.c      \
 	$(SRC_DIR)/highscore.c  \
-	$(SRC_DIR)/settings.c
+	$(SRC_DIR)/settings.c   \
+	$(SRC_DIR)/font_manager.c
 
 OBJECTS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES))
 
