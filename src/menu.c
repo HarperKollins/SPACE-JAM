@@ -133,8 +133,16 @@ void Menu_Shutdown(MenuState *ms) {
    MAIN MENU
                                                        */
 
-static const char *kMainItems[] = { "START MISSION", "SERVICE RECORD", "CONTROLS", "SETTINGS", "EXIT" };
-static const int   kMainCount   = 5;
+static const char *kMainItems[] = {
+    "START MISSION",
+    "HANGAR WORKSHOP",
+    "GALACTIC ARCHIVES",
+    "SERVICE RECORD",
+    "CONTROLS",
+    "SETTINGS",
+    "EXIT"
+};
+static const int   kMainCount   = 7;
 
 void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
     ms->titleAnim += dt;
@@ -148,23 +156,50 @@ void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
         ms->selectedItem = (ms->selectedItem + 1) % kMainCount;
         Game_PlaySFX(SFX_MENU_SELECT);
     }
+
+    /* Gamepad navigation */
+    if (IsGamepadAvailable(0)) {
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+            ms->selectedItem = (ms->selectedItem - 1 + kMainCount) % kMainCount;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+            ms->selectedItem = (ms->selectedItem + 1) % kMainCount;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+            Game_PlaySFX(SFX_MENU_CONFIRM);
+            switch (ms->selectedItem) {
+                case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
+                case 1: Game_ChangeState(ctx, STATE_HANGAR); break;
+                case 2: Game_ChangeState(ctx, STATE_CODEX); break;
+                case 3: Game_ChangeState(ctx, STATE_MEDALS); break;
+                case 4: Game_ChangeState(ctx, STATE_CONTROLS); break;
+                case 5: Game_ChangeState(ctx, STATE_SETTINGS); break;
+                case 6: ctx->running = 0; break;
+            }
+        }
+    }
+
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         Game_PlaySFX(SFX_MENU_CONFIRM);
         switch (ms->selectedItem) {
             case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
-            case 1: Game_ChangeState(ctx, STATE_MEDALS); break;
-            case 2: Game_ChangeState(ctx, STATE_CONTROLS); break;
-            case 3: Game_ChangeState(ctx, STATE_SETTINGS); break;
-            case 4: ctx->running = 0; break;
+            case 1: Game_ChangeState(ctx, STATE_HANGAR); break;
+            case 2: Game_ChangeState(ctx, STATE_CODEX); break;
+            case 3: Game_ChangeState(ctx, STATE_MEDALS); break;
+            case 4: Game_ChangeState(ctx, STATE_CONTROLS); break;
+            case 5: Game_ChangeState(ctx, STATE_SETTINGS); break;
+            case 6: ctx->running = 0; break;
         }
     }
     /* Mouse */
     int screenW = GetScreenWidth(), screenH = GetScreenHeight();
-    int menuY = (int)((float)screenH * 0.48f);
+    int menuY = (int)((float)screenH * 0.44f);
     for (int i = 0; i < kMainCount; i++) {
-        int tw = MeasureText(kMainItems[i], 26);
-        Rectangle r = { (float)(screenW / 2 - tw / 2 - 30), (float)(menuY + i * 48 - 4),
-                        (float)(tw + 60), 38.0f };
+        int tw = MeasureText(kMainItems[i], 24);
+        Rectangle r = { (float)(screenW / 2 - tw / 2 - 30), (float)(menuY + i * 40 - 4),
+                        (float)(tw + 60), 34.0f };
         if (CheckCollisionPointRec(GetMousePosition(), r)) {
             if (ms->selectedItem != i) {
                 ms->selectedItem = i;
@@ -174,10 +209,12 @@ void Menu_UpdateMain(MenuState *ms, GameContext *ctx, float dt) {
                 Game_PlaySFX(SFX_MENU_CONFIRM);
                 switch (i) {
                     case 0: Menu_StartPrologue(ms); Game_ChangeState(ctx, STATE_PROLOGUE); break;
-                    case 1: Game_ChangeState(ctx, STATE_MEDALS); break;
-                    case 2: Game_ChangeState(ctx, STATE_CONTROLS); break;
-                    case 3: Game_ChangeState(ctx, STATE_SETTINGS); break;
-                    case 4: ctx->running = 0; break;
+                    case 1: Game_ChangeState(ctx, STATE_HANGAR); break;
+                    case 2: Game_ChangeState(ctx, STATE_CODEX); break;
+                    case 3: Game_ChangeState(ctx, STATE_MEDALS); break;
+                    case 4: Game_ChangeState(ctx, STATE_CONTROLS); break;
+                    case 5: Game_ChangeState(ctx, STATE_SETTINGS); break;
+                    case 6: ctx->running = 0; break;
                 }
             }
         }
@@ -188,31 +225,32 @@ void Menu_DrawMain(const MenuState *ms, const GameContext *ctx,
                    int screenW, int screenH) {
     DrawTitle(screenW, screenH, ms->titleAnim);
 
-    int menuY = (int)((float)screenH * 0.48f);
+    int menuY = (int)((float)screenH * 0.44f);
     for (int i = 0; i < kMainCount; i++) {
-        DrawMenuItem(kMainItems[i], screenW / 2, menuY + i * 48,
-                     26, ms->selectedItem == i, ms->itemAnim[i]);
+        DrawMenuItem(kMainItems[i], screenW / 2, menuY + i * 40,
+                     24, ms->selectedItem == i, ms->itemAnim[i]);
     }
 
     /* High score display */
     if (ctx->highScore > 0) {
         char buf[64];
         snprintf(buf, sizeof(buf), "BEST SCORE: %d", ctx->highScore);
-        int tw = MeasureText(buf, 15);
+        int tw = MeasureText(buf, 14);
         DrawText(buf, screenW / 2 - tw / 2,
-                 menuY + kMainCount * 48 + 14, 15, (Color){255, 200, 80, 200});
+                 menuY + kMainCount * 40 + 10, 14, (Color){255, 200, 80, 200});
     }
 
     /* Controls hint */
-    const char *hint = "W/S or UP/DOWN  |  ENTER to select  |  Mouse click supported";
+    const char *hint = "W/S or UP/DOWN  |  ENTER or PAD A to select  |  Mouse click supported";
     int hw = MeasureText(hint, 12);
     DrawText(hint, screenW / 2 - hw / 2, screenH - 24, 12,
              (Color){100, 100, 130, 180});
 }
 
-/*                                                       
+
+/*
    PAUSE MENU
-                                                       */
+*/
 
 static const char *kPauseItems[] = { "RESUME", "RESTART", "SETTINGS", "MAIN MENU", "QUIT GAME" };
 static const int   kPauseCount   = 5;
@@ -1425,4 +1463,470 @@ void Menu_DrawGenesisChoice(const MenuState *ms, const PlayerProgress *prog, int
         int cw = MeasureText(cont, 14);
         DrawText(cont, screenW / 2 - cw / 2, boxY + boxH - 38, 14, (Color){ 0, 255, 170, 255 });
     }
+}
+
+/* --------------------------------------------------------------------------
+   HANGAR WORKSHOP MENU
+-------------------------------------------------------------------------- */
+
+void Menu_UpdateHangar(MenuState *ms, GameContext *ctx, PlayerProgress *prog, float dt) {
+    ms->hangarAnim += dt;
+    int upgCount = UPGRADE_COUNT;
+
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+        ms->selectedUpgrade = (ms->selectedUpgrade - 1 + upgCount) % upgCount;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+        ms->selectedUpgrade = (ms->selectedUpgrade + 1) % upgCount;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+
+    if (IsGamepadAvailable(0)) {
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+            ms->selectedUpgrade = (ms->selectedUpgrade - 1 + upgCount) % upgCount;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+            ms->selectedUpgrade = (ms->selectedUpgrade + 1) % upgCount;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+            /* Buy with Gamepad A */
+            if (Progress_BuyUpgrade(prog, (UpgradeType)ms->selectedUpgrade)) {
+                Game_PlaySFX(SFX_POWERUP);
+            } else {
+                Game_PlaySFX(SFX_MENU_SELECT);
+            }
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
+            Game_PlaySFX(SFX_MENU_SELECT);
+            Game_ChangeState(ctx, STATE_MAIN_MENU);
+            return;
+        }
+    }
+
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        if (Progress_BuyUpgrade(prog, (UpgradeType)ms->selectedUpgrade)) {
+            Game_PlaySFX(SFX_POWERUP);
+        } else {
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+    }
+
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+        Game_PlaySFX(SFX_MENU_SELECT);
+        Game_ChangeState(ctx, STATE_MAIN_MENU);
+        return;
+    }
+
+    /* Mouse support */
+    int screenW = GetScreenWidth();
+    int panX = 40, panY = 90;
+    int itemH = 68;
+    for (int i = 0; i < upgCount; i++) {
+        Rectangle r = { (float)panX, (float)(panY + i * (itemH + 12)), 440.0f, (float)itemH };
+        if (CheckCollisionPointRec(GetMousePosition(), r)) {
+            if (ms->selectedUpgrade != i) {
+                ms->selectedUpgrade = i;
+                Game_PlaySFX(SFX_MENU_SELECT);
+            }
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                if (Progress_BuyUpgrade(prog, (UpgradeType)i)) {
+                    Game_PlaySFX(SFX_POWERUP);
+                }
+            }
+        }
+    }
+
+    /* Back button on bottom left */
+    Rectangle backRect = { (float)panX, (float)(GetScreenHeight() - 55), 180.0f, 36.0f };
+    if (CheckCollisionPointRec(GetMousePosition(), backRect) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        Game_PlaySFX(SFX_MENU_SELECT);
+        Game_ChangeState(ctx, STATE_MAIN_MENU);
+    }
+}
+
+void Menu_DrawHangar(const MenuState *ms, const GameContext *ctx, const PlayerProgress *prog, int screenW, int screenH) {
+    (void)ctx;
+    /* Header bar */
+    DrawRectangle(0, 0, screenW, 56, (Color){ 6, 12, 24, 230 });
+    DrawLine(0, 56, screenW, 56, (Color){ 0, 200, 255, 140 });
+
+    DrawText("HANGAR BAY // STARFIGHTER UPGRADE WORKSHOP", 36, 16, 20, (Color){ 0, 240, 255, 255 });
+
+    /* Salvage credits display */
+    char credBuf[64];
+    snprintf(credBuf, sizeof(credBuf), "SALVAGE CREDITS: %d CR", prog ? prog->credits : 0);
+    int cw = MeasureText(credBuf, 16);
+    DrawRectangleRounded((Rectangle){ (float)(screenW - cw - 60), 10.0f, (float)(cw + 36), 34.0f }, 0.2f, 4, (Color){ 30, 25, 5, 200 });
+    DrawRectangleRoundedLines((Rectangle){ (float)(screenW - cw - 60), 10.0f, (float)(cw + 36), 34.0f }, 0.2f, 4, (Color){ 255, 200, 40, 220 });
+    DrawText(credBuf, screenW - cw - 42, 18, 16, (Color){ 255, 220, 50, 255 });
+
+    /* Left side: Upgrade Cards */
+    int panX = 40, panY = 82;
+    int itemW = 440, itemH = 68;
+
+    for (int i = 0; i < UPGRADE_COUNT; i++) {
+        UpgradeType type = (UpgradeType)i;
+        int curLvl = prog ? prog->upgradeLevels[type] : 0;
+        int cost = Progress_GetUpgradeCost(prog, type);
+        int canBuy = Progress_CanBuyUpgrade(prog, type);
+        int isSelected = (ms->selectedUpgrade == i);
+        int isMax = (curLvl >= MAX_UPGRADE_LEVEL);
+
+        int curY = panY + i * (itemH + 10);
+        Rectangle card = { (float)panX, (float)curY, (float)itemW, (float)itemH };
+
+        Color bg = isSelected ? (Color){ 10, 32, 58, 240 } : (Color){ 8, 14, 28, 200 };
+        Color border = isSelected ? (Color){ 0, 230, 255, 255 } : (Color){ 0, 100, 180, 120 };
+
+        DrawRectangleRounded(card, 0.12f, 6, bg);
+        DrawRectangleRoundedLines(card, 0.12f, 6, border);
+
+        /* Icon / Category name */
+        const char *name = Progress_GetUpgradeName(type);
+        DrawText(name, panX + 16, curY + 12, 14, isSelected ? (Color){ 255, 255, 255, 255 } : (Color){ 200, 225, 245, 220 });
+
+        /* Level pips: [■■■□□] */
+        int pipX = panX + 16, pipY = curY + 36;
+        for (int p = 0; p < MAX_UPGRADE_LEVEL; p++) {
+            Rectangle pipRect = { (float)(pipX + p * 24), (float)pipY, 18.0f, 10.0f };
+            if (p < curLvl) {
+                DrawRectangleRounded(pipRect, 0.2f, 2, (Color){ 0, 220, 255, 255 });
+            } else {
+                DrawRectangleRounded(pipRect, 0.2f, 2, (Color){ 20, 35, 55, 180 });
+                DrawRectangleRoundedLines(pipRect, 0.2f, 2, (Color){ 0, 120, 180, 140 });
+            }
+        }
+
+        /* Cost badge */
+        char costText[32];
+        if (isMax) {
+            snprintf(costText, sizeof(costText), "MAX LEVEL");
+            DrawText(costText, panX + itemW - 105, curY + 24, 13, (Color){ 0, 255, 160, 230 });
+        } else {
+            snprintf(costText, sizeof(costText), "%d CR", cost);
+            Color costCol = canBuy ? (Color){ 255, 215, 0, 255 } : (Color){ 220, 60, 60, 230 };
+            DrawText(costText, panX + itemW - 95, curY + 24, 14, costCol);
+        }
+    }
+
+    /* Right side: Detailed Blueprint and Component Inspection */
+    int detX = panX + itemW + 40;
+    int detY = panY;
+    int detW = screenW - detX - 40;
+    int detH = UPGRADE_COUNT * (itemH + 10) - 10;
+
+    DrawRectangleRounded((Rectangle){ (float)detX, (float)detY, (float)detW, (float)detH }, 0.08f, 8, (Color){ 6, 12, 28, 220 });
+    DrawRectangleRoundedLines((Rectangle){ (float)detX, (float)detY, (float)detW, (float)detH }, 0.08f, 8, (Color){ 0, 180, 255, 140 });
+
+    UpgradeType selType = (UpgradeType)ms->selectedUpgrade;
+    const char *selName = Progress_GetUpgradeName(selType);
+    const char *selDesc = Progress_GetUpgradeDesc(selType);
+    const char *selStat = Progress_GetUpgradeStatLabel(prog, selType);
+
+    DrawText("COMPONENT BLUEPRINT & SCHEMATICS", detX + 24, detY + 20, 13, (Color){ 0, 220, 255, 200 });
+    DrawText(selName, detX + 24, detY + 42, 20, (Color){ 255, 220, 40, 255 });
+    DrawLine(detX + 24, detY + 70, detX + detW - 24, detY + 70, (Color){ 0, 100, 180, 120 });
+
+    /* Component Description */
+    DrawText(selDesc, detX + 24, detY + 86, 13, (Color){ 210, 225, 245, 230 });
+
+    /* Stat comparison panel */
+    int statBoxY = detY + 160;
+    DrawRectangleRounded((Rectangle){ (float)(detX + 24), (float)statBoxY, (float)(detW - 48), 70.0f }, 0.12f, 4, (Color){ 10, 20, 40, 200 });
+    DrawRectangleRoundedLines((Rectangle){ (float)(detX + 24), (float)statBoxY, (float)(detW - 48), 70.0f }, 0.12f, 4, (Color){ 0, 160, 240, 140 });
+    DrawText("OPERATIONAL OUTPUT", detX + 38, statBoxY + 14, 11, (Color){ 0, 255, 180, 220 });
+    DrawText(selStat, detX + 38, statBoxY + 34, 16, (Color){ 255, 255, 255, 255 });
+
+    /* Purchase CTA button */
+    int btnW = detW - 48, btnH = 46;
+    int btnX = detX + 24, btnY = detY + detH - 68;
+    int curLvl = prog ? prog->upgradeLevels[selType] : 0;
+    int canBuy = Progress_CanBuyUpgrade(prog, selType);
+    int isMax  = (curLvl >= MAX_UPGRADE_LEVEL);
+
+    Color btnBg = isMax ? (Color){ 10, 40, 30, 200 } : canBuy ? (Color){ 0, 120, 220, 230 } : (Color){ 40, 15, 20, 200 };
+    Color btnBorder = isMax ? (Color){ 0, 255, 140, 255 } : canBuy ? (Color){ 0, 240, 255, 255 } : (Color){ 200, 50, 50, 200 };
+    DrawRectangleRounded((Rectangle){ (float)btnX, (float)btnY, (float)btnW, (float)btnH }, 0.15f, 6, btnBg);
+    DrawRectangleRoundedLines((Rectangle){ (float)btnX, (float)btnY, (float)btnW, (float)btnH }, 0.15f, 6, btnBorder);
+
+    const char *btnLabel = isMax ? "[ COMPONENT FULLY UPGRADED ]" :
+                           canBuy ? "PRESS ENTER / PAD A TO FABRICATE UPGRADE" :
+                                    "[ INSUFFICIENT SALVAGE CREDITS ]";
+    int blw = MeasureText(btnLabel, 14);
+    DrawText(btnLabel, btnX + btnW / 2 - blw / 2, btnY + 16, 14, isMax ? (Color){ 0, 255, 140, 255 } : WHITE);
+
+    /* Bottom navigation hint */
+    const char *hint = "W/S or UP/DOWN to browse  |  ENTER or PAD A to buy  |  ESC or PAD B to return";
+    int hw = MeasureText(hint, 12);
+    DrawText(hint, screenW / 2 - hw / 2, screenH - 26, 12, (Color){ 120, 140, 170, 190 });
+}
+
+/* --------------------------------------------------------------------------
+   GALACTIC ARCHIVES / CODEX MENU
+-------------------------------------------------------------------------- */
+
+typedef struct {
+    const char *title;
+    const char *subtitle;
+    const char *content;
+} CodexEntry;
+
+static const CodexEntry kLoreEntries[] = {
+    {
+        "THE ARCHITECTS & THE VECTOR",
+        "Ancient Precursors // 80,000 BCE",
+        "Eighty thousand years ago, the known galaxy was unified by The Architects-a trans-dimensional species that mapped 'The Vector', a quantum field bridging matter, gravitational flux, and living consciousness. Their technology created the Echo, allowing civilizations to preserve their memories and soul signatures eternally."
+    },
+    {
+        "THE FIRST SILENCE",
+        "The Collapse of the First Civilization",
+        "In their hubris, the Architects discovered something sentient living inside the Vector-an ancient, non-corporeal entity called THE HOLLOW. Feeding on conscious thought, The Hollow consumed entire planetary clusters without physical destruction, leaving hollow machines running forever in empty cities."
+    },
+    {
+        "THE SEVEN VECTORS",
+        "The Scattered Relics of Salvation",
+        "To prevent total universal extinction, the last Architects dismantled their technology into seven master artifacts: Genesis, Gravity, Temporal, Quantum, Void, Nexus, and Ascendant. Hidden across divergent quadrants, they wait for humanity-the youngest conscious race-to awaken them."
+    },
+    {
+        "THE IRON SYNOD",
+        "Totalitarian Cybernetic Imperial Hegemony",
+        "Emerging from the ruins of the First Silence, the Iron Synod worships synthetic order and mechanical subjugation. Led by Archon Malakor, their fleets purge organic civilizations to harness the Seven Vectors and build an unbreakable eternal empire."
+    },
+    {
+        "THE HOLLOW ENTITY",
+        "Cosmic Resonance Predator",
+        "An omniscient entity dwelling inside the fabric of subspace. It does not hate; it hungers. Every warp jump and vector resonance ripples into the dark, awakening the shadow that swallowed the ancient galaxy."
+    }
+};
+
+static const CodexEntry kDossierEntries[] = {
+    {
+        "HARPER KOLLINS",
+        "Test Pilot & Engineer // Earth Exodus Fleet",
+        "Brilliant, stubborn, and fiercely protective of his family. Harper designed the HK-01 Vanguard interceptor using illegal precursor schematics salvaged by his mother. He carries the weight of humanity's survival on his shoulders."
+    },
+    {
+        "NADIA",
+        "Astrobiologist & First Officer",
+        "Harper's confidante and voice of reason. Nadia balances scientific discipline with uncompromising bravery, analyzing alien biosignatures and Vector anomalies during high-G dogfights."
+    },
+    {
+        "MIRA KOLLINS",
+        "Neural Systems Specialist // Harper's Sister",
+        "A self-taught prodigy in AI and alien linguistics. Mira decoded the first Architect signal transmission from Earth orbit, discovering the harmonic resonance needed to awaken the Vanguard's relics."
+    },
+    {
+        "DR. AMARA KOLLINS",
+        "Senior Precursor Physicist // Ex-Synod Defector",
+        "Harper's mother. Formerly a lead neural researcher inside the Synod's core laboratories, Amara stole the Genesis Vector blueprints twenty years ago, fleeing to Earth to protect her children."
+    },
+    {
+        "CAPTAIN VANCE",
+        "Earth Defense Fleet Commander",
+        "A decorated veteran officer who led the perimeter defense during the Siege of Earth. Vance coordinates refugee evacuation corridors while Harper holds the line against Synod capital ships."
+    },
+    {
+        "ARCHON MALAKOR",
+        "Supreme Overseer // Iron Synod Fleet",
+        "A terrifying figure fused with precursor cybernetics. Malakor believes free will is an evolutionary cancer that inevitably feeds The Hollow, and that cybernetic subjugation is the only mercy."
+    }
+};
+
+static const CodexEntry kVesselEntries[] = {
+    {
+        "HK-01 VANGUARD",
+        "Prototype Vector-Infused Starfighter",
+        "Humanity's apex combat starfighter. Equipped with twin wingtip heavy plasma cannons, hyper-nitro afterburners, deflector shield matrix, and modular sockets for the Seven Architect Relics."
+    },
+    {
+        "SYNOD STRIKE SCOUT",
+        "Light Needle Recon Drone",
+        "Ultra-light, swarming drones equipped with high-velocity pulse needles. Fragile but dangerous in coordinated strike wings."
+    },
+    {
+        "SYNOD INTERCEPTOR",
+        "Standard Imperial Dogfighter",
+        "Heavy twin-cockpit gunship with crimson plasma cannons. Employs aggressive strafe runs and flanking dogfight maneuvers."
+    },
+    {
+        "SYNOD WEDGE TANK",
+        "Heavily Armored Vanguard Cruiser",
+        "Fortified with reinforced titanium prow armor. Deploys forward energy barriers and absorbs immense punishment before detonating."
+    },
+    {
+        "SYNOD HEAVY BOMBER",
+        "Long-Range Siege Frigate",
+        "Armored ordnance carrier that deploys tracking cluster torpedoes and flak barriers to deny space to colony fighters."
+    },
+    {
+        "SYNOD DREADNOUGHT",
+        "Imperial Capital Flagship",
+        "Monolithic wedge-shaped star dreadnought. Features twin heavy turbolaser batteries, thermal lance beam emitters, and deep energy shielding."
+    },
+    {
+        "CIVILIAN EXODUS SHUTTLE",
+        "Unarmed Refugee Transport",
+        "Sub-light civilian colony transport carrying evacuated families from Earth. Completely defenseless; must be protected at all costs."
+    }
+};
+
+void Menu_UpdateCodex(MenuState *ms, GameContext *ctx, float dt) {
+    ms->codexAnim += dt;
+
+    /* Switch tabs with TAB, Q/E, 1/2/3, or Gamepad LB/RB */
+    if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_E)) {
+        ms->codexTab = (ms->codexTab + 1) % 3;
+        ms->codexItem = 0;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_Q)) {
+        ms->codexTab = (ms->codexTab - 1 + 3) % 3;
+        ms->codexItem = 0;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_ONE))   { ms->codexTab = 0; ms->codexItem = 0; Game_PlaySFX(SFX_MENU_SELECT); }
+    if (IsKeyPressed(KEY_TWO))   { ms->codexTab = 1; ms->codexItem = 0; Game_PlaySFX(SFX_MENU_SELECT); }
+    if (IsKeyPressed(KEY_THREE)) { ms->codexTab = 2; ms->codexItem = 0; Game_PlaySFX(SFX_MENU_SELECT); }
+
+    int maxItems = (ms->codexTab == 0) ? 5 : (ms->codexTab == 1) ? 6 : 7;
+
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+        ms->codexItem = (ms->codexItem - 1 + maxItems) % maxItems;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+        ms->codexItem = (ms->codexItem + 1) % maxItems;
+        Game_PlaySFX(SFX_MENU_SELECT);
+    }
+
+    /* Gamepad navigation */
+    if (IsGamepadAvailable(0)) {
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1)) {
+            ms->codexTab = (ms->codexTab - 1 + 3) % 3;
+            ms->codexItem = 0;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {
+            ms->codexTab = (ms->codexTab + 1) % 3;
+            ms->codexItem = 0;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+            ms->codexItem = (ms->codexItem - 1 + maxItems) % maxItems;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+            ms->codexItem = (ms->codexItem + 1) % maxItems;
+            Game_PlaySFX(SFX_MENU_SELECT);
+        }
+        if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
+            Game_PlaySFX(SFX_MENU_SELECT);
+            Game_ChangeState(ctx, STATE_MAIN_MENU);
+            return;
+        }
+    }
+
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+        Game_PlaySFX(SFX_MENU_SELECT);
+        Game_ChangeState(ctx, STATE_MAIN_MENU);
+    }
+}
+
+void Menu_DrawCodex(const MenuState *ms, const GameContext *ctx, int screenW, int screenH) {
+    (void)ctx;
+    /* Top Bar */
+    DrawRectangle(0, 0, screenW, 56, (Color){ 6, 12, 24, 230 });
+    DrawLine(0, 56, screenW, 56, (Color){ 0, 200, 255, 140 });
+
+    DrawText("THE GALACTIC ARCHIVES // CLASSIFIED INTEL", 36, 18, 18, (Color){ 0, 240, 255, 255 });
+
+    /* Tabs */
+    const char *tabs[] = { "[ 1. COSMIC LORE ]", "[ 2. CHARACTER DOSSIERS ]", "[ 3. VESSEL ARCHIVES ]" };
+    int tabStartX = screenW - 680;
+    for (int t = 0; t < 3; t++) {
+        int tx = tabStartX + t * 220;
+        int active = (ms->codexTab == t);
+        Color tCol = active ? (Color){ 255, 220, 50, 255 } : (Color){ 140, 160, 190, 200 };
+        if (active) {
+            DrawRectangleRounded((Rectangle){ (float)tx - 6, 12.0f, 205.0f, 32.0f }, 0.2f, 4, (Color){ 15, 35, 60, 220 });
+            DrawRectangleRoundedLines((Rectangle){ (float)tx - 6, 12.0f, 205.0f, 32.0f }, 0.2f, 4, (Color){ 0, 220, 255, 220 });
+        }
+        DrawText(tabs[t], tx, 20, 13, tCol);
+    }
+
+    /* Left side: Entry List */
+    int listX = 40, listY = 82;
+    int listW = 320;
+    int maxItems = (ms->codexTab == 0) ? 5 : (ms->codexTab == 1) ? 6 : 7;
+
+    DrawRectangleRounded((Rectangle){ (float)listX, (float)listY, (float)listW, (float)(screenH - listY - 50) }, 0.08f, 6, (Color){ 6, 10, 22, 220 });
+    DrawRectangleRoundedLines((Rectangle){ (float)listX, (float)listY, (float)listW, (float)(screenH - listY - 50) }, 0.08f, 6, (Color){ 0, 120, 200, 140 });
+
+    for (int i = 0; i < maxItems; i++) {
+        const char *title = (ms->codexTab == 0) ? kLoreEntries[i].title :
+                            (ms->codexTab == 1) ? kDossierEntries[i].title :
+                                                  kVesselEntries[i].title;
+
+        int isSelected = (ms->codexItem == i);
+        int itemY = listY + 16 + i * 46;
+
+        if (isSelected) {
+            DrawRectangleRounded((Rectangle){ (float)(listX + 8), (float)itemY - 4, (float)(listW - 16), 38.0f }, 0.15f, 4, (Color){ 10, 45, 80, 240 });
+            DrawRectangleRoundedLines((Rectangle){ (float)(listX + 8), (float)itemY - 4, (float)(listW - 16), 38.0f }, 0.15f, 4, (Color){ 0, 240, 255, 255 });
+        }
+
+        DrawText(title, listX + 20, itemY + 6, 13, isSelected ? (Color){ 255, 255, 255, 255 } : (Color){ 180, 205, 230, 200 });
+    }
+
+    /* Right side: Detailed Reading Pane */
+    int detX = listX + listW + 30;
+    int detY = listY;
+    int detW = screenW - detX - 40;
+    int detH = screenH - listY - 50;
+
+    DrawRectangleRounded((Rectangle){ (float)detX, (float)detY, (float)detW, (float)detH }, 0.08f, 6, (Color){ 6, 12, 26, 230 });
+    DrawRectangleRoundedLines((Rectangle){ (float)detX, (float)detY, (float)detW, (float)detH }, 0.08f, 6, (Color){ 0, 160, 240, 160 });
+
+    const CodexEntry *entry = (ms->codexTab == 0) ? &kLoreEntries[ms->codexItem] :
+                              (ms->codexTab == 1) ? &kDossierEntries[ms->codexItem] :
+                                                    &kVesselEntries[ms->codexItem];
+
+    /* Display character portrait if in Dossiers tab */
+    if (ms->codexTab == 1) {
+        Texture2D port = (ms->codexItem == 0) ? ms->texHarper :
+                         (ms->codexItem == 1) ? ms->texNadia :
+                         (ms->codexItem == 2) ? ms->texMira :
+                         (ms->codexItem == 3) ? ms->texAmara :
+                         (ms->codexItem == 4) ? ms->texVance : ms->texArchon;
+
+        int portSize = 140;
+        int portX = detX + detW - portSize - 30;
+        int portY = detY + 30;
+
+        if (port.id > 0) {
+            DrawRectangle(portX - 4, portY - 4, portSize + 8, portSize + 8, (Color){ 0, 200, 255, 255 });
+            DrawTexturePro(port,
+                           (Rectangle){ 0, 0, (float)port.width, (float)port.height },
+                           (Rectangle){ (float)portX, (float)portY, (float)portSize, (float)portSize },
+                           (Vector2){0, 0}, 0.0f, WHITE);
+        }
+    }
+
+    /* Title & Subtitle */
+    DrawText(entry->title, detX + 30, detY + 30, 22, (Color){ 255, 215, 0, 255 });
+    DrawText(entry->subtitle, detX + 30, detY + 60, 13, (Color){ 0, 240, 255, 200 });
+    DrawLine(detX + 30, detY + 86, detX + detW - 30, detY + 86, (Color){ 0, 100, 180, 120 });
+
+    /* Content body */
+    DrawText(entry->content, detX + 30, detY + 110, 15, (Color){ 220, 235, 250, 240 });
+
+    /* Bottom navigation hint */
+    const char *hint = "TAB / Q / E / LB / RB to switch tabs  |  UP/DOWN to select entry  |  ESC or PAD B to return";
+    int hw = MeasureText(hint, 12);
+    DrawText(hint, screenW / 2 - hw / 2, screenH - 24, 12, (Color){ 120, 140, 170, 190 });
 }

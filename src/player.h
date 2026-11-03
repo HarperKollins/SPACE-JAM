@@ -6,6 +6,7 @@
 
 #include "config.h"
 #include "raylib.h"
+#include "progress.h"
 
 typedef enum {
   WEAPON_SINGLE = 0,
@@ -31,6 +32,11 @@ typedef struct {
 
   /* Combat */
   int health;
+  int maxHealth;
+  int shield;
+  int maxShield;
+  float shieldRechargeTimer;
+  float armorReduction;
   int lives;
   float iFrameTimer; /* invulnerability frames remaining */
   int dead;
@@ -45,6 +51,15 @@ typedef struct {
   float spreadShotTimer;
   float shieldTimer;
   float invincibleTimer;
+  int   plasmaDamage;
+
+  /* Secondary Ordnance (Photon Torpedoes) */
+  int   torpedoLevel;
+  float torpedoCooldown;
+  float torpedoTimer;
+
+  /* Input & Gamepad */
+  int   hasGamepad;
 
   /* Visual */
   float thrustAnim; /* 0-1, drives base engine glow (always active/flexing) */
@@ -59,12 +74,16 @@ typedef struct {
 
 void Player_Init(Player *p, int screenW, int screenH);
 void Player_Shutdown(Player *p);
+void Player_ApplyUpgrades(Player *p, const PlayerProgress *prog);
 void Player_SetShipTier(Player *p, ShipTier tier);
 void Player_Update(Player *p, float dt, int screenW, int screenH);
 void Player_Draw(const Player *p);
 void Player_TakeDamage(Player *p, int dmg);
-int Player_TryShoot(Player *p, float dt); /* returns 1 if should spawn bullet */
+int  Player_IsAlive(const Player *p);
+void Player_ResetPosition(Player *p, int screenW, int screenH);
+int  Player_TryShoot(Player *p, float dt);
+int  Player_CanFireTorpedo(const Player *p);
+void Player_TriggerTorpedoCooldown(Player *p);
 void Player_ApplyPowerup(Player *p, int powerupType);
-int Player_IsAlive(const Player *p);
 
 #endif /* SPACEJAM_PLAYER_H */

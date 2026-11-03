@@ -1,14 +1,15 @@
 /**
- * player.c - Player spacecraft logic and rendering
+ * player.c - Player spacecraft logic, upgrades, gamepad, and rendering
  */
 #include "player.h"
+#include "progress.h"
 #include "utils.h"
 #include "config.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
 
-/*        Init                                                                                                                                            */
+/* -- Init ------------------------------------------------------------------ */
 
 static Texture2D LoadPlayerTextureWithFallback(const char *relPath) {
     char buf[512];
@@ -39,7 +40,12 @@ void Player_Init(Player *p, int screenW, int screenH) {
     p->vel.y     = 0.0f;
     p->rotation  = 0.0f;
 
+    p->maxHealth = PLAYER_MAX_HEALTH;
     p->health    = PLAYER_MAX_HEALTH;
+    p->shield    = 0;
+    p->maxShield = 0;
+    p->shieldRechargeTimer = 0.0f;
+    p->armorReduction = 0.0f;
     p->lives     = PLAYER_MAX_LIVES;
     p->iFrameTimer = 0.0f;
     p->dead      = 0;
@@ -53,6 +59,13 @@ void Player_Init(Player *p, int screenW, int screenH) {
     p->spreadShotTimer  = 0.0f;
     p->shieldTimer      = 0.0f;
     p->invincibleTimer  = 0.0f;
+    p->plasmaDamage     = BULLET_DAMAGE;
+
+    p->torpedoLevel    = 0;
+    p->torpedoCooldown = 3.5f;
+    p->torpedoTimer    = 0.0f;
+
+    p->hasGamepad   = 0;
     p->thrustAnim   = 0.45f; /* Always active base nitro flex */
     p->boostAnim    = 0.0f;
     p->bankAngle    = 0.0f;
@@ -74,16 +87,42 @@ void Player_Shutdown(Player *p) {
     p->spriteLoaded = 0;
 }
 
+void Player_ApplyUpgrades(Player *p, const PlayerProgress *prog) {
+    if (!prog) return;
+    int hullLvl   = prog->upgradeLevels[UPGRADE_HULL];
+    int shieldLvl = prog->upgradeLevels[UPGRADE_SHIELD];
+    int gunLvl    = prog->upgradeLevels[UPGRADE_OVERCHARGE];
+    int torpLvl   = prog->upgradeLevels[UPGRADE_TORPEDOES];
+
+    p->maxHealth = 100 + hullLvl * 25;
+    if (p->health > p->maxHealth) p->health = p->maxHealth;
+    p->armorReduction = hullLvl * 0.05f;
+
+    p->maxShield = shieldLvl * 20;
+    if (p->shield == 0 && p->maxShield > 0) p->shield = p->maxShield;
+    if (p->shield > p->maxShield) p->shield = p->maxShield;
+
+    p->plasmaDamage = 12 + gunLvl * 3;
+    p->torpedoLevel = torpLvl;
+    p->torpedoCooldown = 3.8f - torpLvl * 0.4f;
+}
+
 void Player_SetShipTier(Player *p, ShipTier tier) {
     if (tier > p->shipTier) {
-        /* Hull upgrade bonus */
         int bonus = (tier == SHIP_TIER_MK2) ? 20 : (tier == SHIP_TIER_MK3) ? 30 : 50;
-        p->health = MIN(PLAYER_MAX_HEALTH + bonus, p->health + bonus);
+        p->health = MIN(p->maxHealth + bonus, p->health + bonus);
     }
     p->shipTier = tier;
 }
 
-/*        Input & Physics                                                                                                           */
+void Player_ResetPosition(Player *p, int screenW, int screenH) {
+    p->pos.x = (float)screenW * 0.5f;
+    p->pos.y = (float)screenH * 0.7f;
+    p->vel   = (Vector2){0, 0};
+    p->rotation = 0.0f;
+}
+
+/* -- Input & Physics ------------------------------------------------------- */
 
 void Player_Update(Player *p, float dt, int screenW, int screenH) {
     if (p->dead) {
@@ -91,27 +130,62 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
         return;
     }
 
-    /*        Rotation & 2.5D Visual Banking        */
+    /* Check Gamepad (slot 0) */
+    p->hasGamepad = IsGamepadAvailable(0);
+    float padStickX = 0.0f;
+    float padStickY = 0.0f;
+    int padBoost = 0;
+    int padThrust = 0;
+
+    if (p->hasGamepad) {
+        padStickX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
+        padStickY = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
+        /* Apply deadzone */
+        if (fabsf(padStickX) < 0.20f) padStickX = 0.0f;
+        if (fabsf(padStickY) < 0.20f) padStickY = 0.0f;
+
+        float padRT = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER);
+        float padLT = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER);
+        if (padLT > 0.25f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1)) padBoost = 1;
+        if (padRT > 0.25f || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) padThrust = 1;
+    }
+
+    /* -- Rotation & 2.5D Visual Banking -------------------- */
     float rot = 0.0f;
     float targetBank = 0.0f;
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
-        rot -= PLAYER_ROT_SPEED;
-        targetBank -= 1.0f;
+
+    if (p->hasGamepad && (padStickX != 0.0f || padStickY != 0.0f)) {
+        /* Direct 360 degree analog stick flight heading */
+        float targetAngle = RAD2DEG(atan2f(padStickX, -padStickY));
+        float diff = targetAngle - p->rotation;
+        while (diff < -180.0f) diff += 360.0f;
+        while (diff > 180.0f)  diff -= 360.0f;
+        p->rotation += diff * MIN(1.0f, dt * 14.0f);
+        targetBank = CLAMP(diff / 45.0f, -1.0f, 1.0f);
+    } else {
+        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT) ||
+            (p->hasGamepad && IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT))) {
+            rot -= PLAYER_ROT_SPEED;
+            targetBank -= 1.0f;
+        }
+        if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT) ||
+            (p->hasGamepad && IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT))) {
+            rot += PLAYER_ROT_SPEED;
+            targetBank += 1.0f;
+        }
+        p->rotation += rot * dt;
     }
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
-        rot += PLAYER_ROT_SPEED;
-        targetBank += 1.0f;
-    }
-    p->rotation += rot * dt;
 
     /* Smoothly interpolate visual bank angle for snappy 2.5D roll */
     p->bankAngle += (targetBank - p->bankAngle) * MIN(1.0f, dt * 12.0f);
 
-    /*        Thrust & Hyper-Nitro Afterburner        */
+    /* -- Thrust & Hyper-Nitro Afterburner ------------------ */
     Vector2 forward = AngleToDir(p->rotation);
-    int thrustForward = (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP));
+    float stickMag = sqrtf(padStickX * padStickX + padStickY * padStickY);
+    int thrustForward = (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP) ||
+                         (p->hasGamepad && (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP) || stickMag > 0.35f)));
     int hyperNitro    = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT) ||
-                         IsMouseButtonDown(MOUSE_BUTTON_RIGHT));
+                         IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) || padBoost);
 
     p->isBoosting = (thrustForward && hyperNitro) || (hyperNitro && Vec2Len(p->vel) > 30.0f);
 
@@ -123,384 +197,198 @@ void Player_Update(Player *p, float dt, int screenW, int screenH) {
         maxSpeed = PLAYER_BOOST_SPEED;
     }
 
-    int thrusting = 0;
     if (thrustForward || p->isBoosting) {
         p->vel.x += forward.x * accel * dt;
         p->vel.y += forward.y * accel * dt;
-        thrusting = 1;
     }
-    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
+    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN) ||
+        (p->hasGamepad && IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN))) {
         p->vel.x -= forward.x * accel * 0.55f * dt;
         p->vel.y -= forward.y * accel * 0.55f * dt;
     }
 
-    /*        Speed cap        */
+    /* -- Speed cap ----------------------------------------- */
     float speed = Vec2Len(p->vel);
     if (speed > maxSpeed) {
         p->vel = Vec2Scale(Vec2Norm(p->vel), maxSpeed);
     }
 
-    /*        Damping (frame-rate independent)        */
+    /* -- Damping (frame-rate independent) ------------------ */
     float damping = powf(PLAYER_DAMPING, dt * 60.0f);
     p->vel.x *= damping;
     p->vel.y *= damping;
 
-    /*        Move        */
+    /* -- Move ---------------------------------------------- */
     p->pos.x += p->vel.x * dt;
     p->pos.y += p->vel.y * dt;
 
-    /*        Screen boundaries (wrap)        */
-    float margin = PLAYER_RADIUS;
-    if (p->pos.x < -margin)          p->pos.x = (float)screenW + margin;
-    if (p->pos.x > screenW + margin) p->pos.x = -margin;
-    if (p->pos.y < -margin)          p->pos.y = (float)screenH + margin;
-    if (p->pos.y > screenH + margin) p->pos.y = -margin;
+    /* -- Screen boundaries (wrap) -------------------------- */
+    float pad = PLAYER_RADIUS + 10.0f;
+    if (p->pos.x < -pad) p->pos.x = (float)screenW + pad;
+    if (p->pos.x > (float)screenW + pad) p->pos.x = -pad;
+    if (p->pos.y < -pad) p->pos.y = (float)screenH + pad;
+    if (p->pos.y > (float)screenH + pad) p->pos.y = -pad;
 
-    /*        Timers        */
-    if (p->iFrameTimer > 0.0f)    p->iFrameTimer    -= dt;
-    if (p->flashTimer  > 0.0f)    p->flashTimer     -= dt;
-    if (p->rapidFireTimer > 0.0f) p->rapidFireTimer -= dt;
-    if (p->doubleShotTimer > 0.0f) p->doubleShotTimer -= dt;
-    if (p->spreadShotTimer > 0.0f) p->spreadShotTimer -= dt;
-    if (p->shieldTimer > 0.0f) {
-        p->shieldTimer -= dt;
-        p->shieldActive = 1;
-    } else {
-        p->shieldActive = 0;
-    }
-    if (p->invincibleTimer > 0.0f) p->invincibleTimer -= dt;
+    /* -- Timers -------------------------------------------- */
     if (p->fireCooldown    > 0.0f) p->fireCooldown    -= dt;
+    if (p->iFrameTimer     > 0.0f) p->iFrameTimer     -= dt;
+    if (p->flashTimer      > 0.0f) p->flashTimer      -= dt;
+    if (p->torpedoTimer    > 0.0f) p->torpedoTimer    -= dt;
 
-    /*        Always-Active Nitro Flex Animation        */
-    /* Base engine is ALWAYS flexing with vivid plasma and hot core */
-    float targetThrust = thrusting ? 1.0f : 0.42f;
-    float thrustRate = thrusting ? 14.0f : 6.0f;
-    p->thrustAnim += (targetThrust - p->thrustAnim) * MIN(1.0f, dt * thrustRate);
-
-    /* Nitro overdrive flare */
-    float targetBoost = p->isBoosting ? 1.0f : 0.0f;
-    p->boostAnim += (targetBoost - p->boostAnim) * MIN(1.0f, dt * 14.0f);
-
-    /*        Weapon upgrade expiry        */
-    if (p->rapidFireTimer <= 0.0f && p->doubleShotTimer <= 0.0f && p->spreadShotTimer <= 0.0f) {
-        p->weapon = WEAPON_SINGLE;
-    } else if (p->rapidFireTimer > 0.0f) {
-        p->weapon = WEAPON_RAPID;
-    } else if (p->spreadShotTimer > 0.0f) {
-        p->weapon = WEAPON_SPREAD;
-    } else if (p->doubleShotTimer > 0.0f) {
-        p->weapon = WEAPON_DOUBLE;
-    }
-}
-
-/*        Drawing                                                                                                                                   */
-
-static void DrawEngineGlow(Vector2 pos, float rotation, float thrust, float boost) {
-    Vector2 forward = AngleToDir(rotation);
-    Vector2 back    = { -forward.x, -forward.y };
-    Vector2 perp    = { -forward.y, forward.x };
-    Vector2 nozzle  = { pos.x + back.x * 14.0f, pos.y + back.y * 14.0f };
-
-    /* 1. Hot Turbine Core: Always flexing glowing orange combustion chamber */
-    float timeSec = (float)GetTime();
-    float corePulse = 0.88f + 0.12f * sinf(timeSec * 22.0f);
-    float coreRadius = 4.8f + boost * 2.2f;
-    DrawCircleV(nozzle, coreRadius * corePulse, (Color){ 255, 130, 20, 240 });
-    DrawCircleV(nozzle, (coreRadius * 0.55f) * corePulse, (Color){ 255, 235, 90, 255 });
-    DrawCircleV(nozzle, (coreRadius * 0.25f), WHITE);
-
-    /* 2. Nitro Flame Dimensions:
-          - Idle: 22-26px electric-cyan plasma blade (always alive & flexing)
-          - Forward thrust: 50-60px
-          - Hyper-nitro boost: 80-98px supersonic blowtorch! */
-    float flutter = sinf(timeSec * 45.0f) * 2.0f + RandFloat(-1.2f, 1.2f);
-    float jetLength = 22.0f + thrust * 32.0f + boost * 42.0f + flutter;
-    float jetWidth  =  6.5f + thrust *  5.0f + boost *  6.5f + RandFloat(-0.5f, 0.5f);
-
-    /* Outer Deep Blue Ion Aura */
-    Vector2 haloTip = { nozzle.x + back.x * (jetLength * 1.25f), nozzle.y + back.y * (jetLength * 1.25f) };
-    Vector2 haloL   = { nozzle.x - perp.x * (jetWidth * 1.45f),  nozzle.y - perp.y * (jetWidth * 1.45f) };
-    Vector2 haloR   = { nozzle.x + perp.x * (jetWidth * 1.45f),  nozzle.y + perp.y * (jetWidth * 1.45f) };
-    unsigned char haloAlpha = (unsigned char)(120 + thrust * 80 + boost * 55);
-    DrawTriangle(nozzle, haloL, haloTip, (Color){   0, 110, 255, haloAlpha });
-    DrawTriangle(nozzle, haloTip, haloR, (Color){   0, 110, 255, haloAlpha });
-
-    /* Mid Electric-Cyan Diamond Jet (The iconic HK-01 nitro flame) */
-    Vector2 jetTip = { nozzle.x + back.x * jetLength, nozzle.y + back.y * jetLength };
-    Vector2 jetL   = { nozzle.x - perp.x * jetWidth,  nozzle.y - perp.y * jetWidth };
-    Vector2 jetR   = { nozzle.x + perp.x * jetWidth,  nozzle.y + perp.y * jetWidth };
-    unsigned char cyanAlpha = (unsigned char)(210 + (int)(boost * 45.0f));
-    DrawTriangle(nozzle, jetL, jetTip, (Color){   0, 225, 255, cyanAlpha });
-    DrawTriangle(nozzle, jetTip, jetR, (Color){   0, 225, 255, cyanAlpha });
-
-    /* Inner Super-Hot White/Laser Core */
-    float innerLen = jetLength * (0.45f + boost * 0.15f);
-    float innerWid = jetWidth  * 0.40f;
-    Vector2 coreTip = { nozzle.x + back.x * innerLen, nozzle.y + back.y * innerLen };
-    Vector2 coreL   = { nozzle.x - perp.x * innerWid, nozzle.y - perp.y * innerWid };
-    Vector2 coreR   = { nozzle.x + perp.x * innerWid, nozzle.y + perp.y * innerWid };
-    DrawTriangle(nozzle, coreL, coreTip, (Color){ 255, 255, 255, 250 });
-    DrawTriangle(nozzle, coreTip, coreR, (Color){ 255, 255, 255, 250 });
-
-    /* 3. Supersonic Mach Shock Diamonds (Flexing nitro afterburner nodes) */
-    if (thrust > 0.35f || boost > 0.1f) {
-        int numDiamonds = (boost > 0.2f) ? 3 : 2;
-        for (int d = 1; d <= numDiamonds; d++) {
-            float distAlong = (float)d * (jetLength / (float)(numDiamonds + 1));
-            Vector2 dCenter = { nozzle.x + back.x * distAlong, nozzle.y + back.y * distAlong };
-            float dSize = (3.5f - (float)d * 0.6f) * (0.8f + boost * 0.5f);
-            Vector2 dN = { dCenter.x - back.x * dSize, dCenter.y - back.y * dSize };
-            Vector2 dS = { dCenter.x + back.x * dSize, dCenter.y + back.y * dSize };
-            Vector2 dE = { dCenter.x + perp.x * dSize * 0.85f, dCenter.y + perp.y * dSize * 0.85f };
-            Vector2 dW = { dCenter.x - perp.x * dSize * 0.85f, dCenter.y - perp.y * dSize * 0.85f };
-            DrawTriangle(dN, dW, dS, (Color){ 220, 255, 255, 240 });
-            DrawTriangle(dN, dS, dE, (Color){ 220, 255, 255, 240 });
+    /* Deflector Shield Auto-Recharge */
+    if (p->maxShield > 0) {
+        if (p->shieldRechargeTimer > 0.0f) {
+            p->shieldRechargeTimer -= dt;
+        } else if (p->shield < p->maxShield) {
+            float rechargeRate = 12.0f + p->maxShield * 0.15f;
+            p->shield = MIN(p->maxShield, p->shield + (int)(rechargeRate * dt + 0.5f));
         }
     }
-}
 
-static void DrawShield(Vector2 pos, float radius, float timer) {
-    float pulse = 0.5f + 0.5f * sinf(timer * 4.0f);
-    Color inner = { 0, 180, 255, (unsigned char)(60 + pulse * 60) };
-    Color outer = { 0, 120, 220, (unsigned char)(30 + pulse * 40) };
-    DrawCircleV(pos, radius + 8.0f, outer);
-    DrawCircleV(pos, radius + 4.0f, inner);
-    DrawCircleLinesV(pos, radius + 8.0f, (Color){100, 220, 255, (unsigned char)(150 + pulse * 105)});
-}
+    /* -- Always-Active Nitro Flex Animation ---------------- */
+    float targetFlex = (thrustForward || p->isBoosting) ? 1.0f : 0.40f;
+    p->thrustAnim += (targetFlex - p->thrustAnim) * MIN(1.0f, dt * 10.0f);
 
-static inline Vector2 RotateBankPoint(Vector2 pos, float lx, float ly, float cosR, float sinR, float bank) {
-    float bx = lx;
-    if (bx < -0.1f) {
-        bx *= (bank < 0.0f) ? (1.0f - (-bank) * 0.28f) : (1.0f + bank * 0.10f);
-    } else if (bx > 0.1f) {
-        bx *= (bank > 0.0f) ? (1.0f - bank * 0.28f) : (1.0f + (-bank) * 0.10f);
+    if (p->isBoosting) {
+        p->boostAnim = MIN(1.0f, p->boostAnim + dt * 12.0f);
+    } else {
+        p->boostAnim = MAX(0.0f, p->boostAnim - dt * 6.0f);
     }
-    Vector2 res;
-    res.x = pos.x + bx * cosR - ly * sinR;
-    res.y = pos.y + bx * sinR + ly * cosR;
-    return res;
+
+    /* -- Weapon upgrade expiry ----------------------------- */
+    if (p->rapidFireTimer > 0.0f) {
+        p->rapidFireTimer -= dt;
+        if (p->rapidFireTimer <= 0.0f) p->weapon = WEAPON_SINGLE;
+    }
+    if (p->doubleShotTimer > 0.0f) {
+        p->doubleShotTimer -= dt;
+        if (p->doubleShotTimer <= 0.0f) p->weapon = WEAPON_SINGLE;
+    }
+    if (p->spreadShotTimer > 0.0f) {
+        p->spreadShotTimer -= dt;
+        if (p->spreadShotTimer <= 0.0f) p->weapon = WEAPON_SINGLE;
+    }
+    if (p->shieldTimer > 0.0f) {
+        p->shieldTimer -= dt;
+        if (p->shieldTimer <= 0.0f) p->shieldActive = 0;
+    }
+    if (p->invincibleTimer > 0.0f) {
+        p->invincibleTimer -= dt;
+    }
 }
+
+/* -- Drawing --------------------------------------------------------------- */
 
 void Player_Draw(const Player *p) {
     if (p->dead) return;
 
-    /* Invulnerability flash     blink every 0.1s */
+    /* Invulnerability flash - blink every 0.1s */
     if (p->iFrameTimer > 0.0f) {
         int blink = (int)(p->iFrameTimer * 10.0f) % 2;
-        if (blink) return;
+        if (blink == 0) return;
     }
 
-    /* Shield */
-    if (p->shieldActive) {
-        DrawShield(p->pos, PLAYER_RADIUS, p->shieldTimer);
+    /* Draw Deflector Shield Bubble */
+    if (p->shieldActive || p->shield > 0) {
+        float shieldPulse = 0.85f + 0.15f * sinf(GetTime() * 6.0f);
+        float sRadius = PLAYER_RADIUS + 12.0f;
+        Color sCol = p->shieldActive ? (Color){0, 240, 255, (unsigned char)(90 * shieldPulse)}
+                                     : (Color){60, 160, 255, (unsigned char)(70 * shieldPulse)};
+        DrawCircleV(p->pos, sRadius, ColorAlpha(sCol, 0.25f));
+        DrawCircleLines((int)p->pos.x, (int)p->pos.y, sRadius, sCol);
+        DrawCircleLines((int)p->pos.x, (int)p->pos.y, sRadius - 2.0f, ColorAlpha(sCol, 0.5f));
     }
 
     /* Invincibility aura */
     if (p->invincibleTimer > 0.0f) {
-        float pulse = 0.5f + 0.5f * sinf(GetTime() * 8.0f);
-        DrawCircleV(p->pos, PLAYER_RADIUS + 12.0f,
-                    (Color){255, 215, 0, (unsigned char)(40 + pulse * 60)});
-        DrawCircleLinesV(p->pos, PLAYER_RADIUS + 12.0f,
-                         (Color){255, 255, 100, 180});
+        float auraPulse = 0.5f + 0.5f * sinf(GetTime() * 12.0f);
+        DrawCircleV(p->pos, PLAYER_RADIUS + 8.0f,
+                    ColorAlpha((Color){255, 220, 50, 255}, 0.25f * auraPulse));
+        DrawCircleLines((int)p->pos.x, (int)p->pos.y, PLAYER_RADIUS + 8.0f,
+                        ColorAlpha((Color){255, 240, 100, 255}, 0.7f * auraPulse));
     }
 
-    /* Engine plasma jet (drawn behind the ship) */
-    DrawEngineGlow(p->pos, p->rotation, p->thrustAnim, p->boostAnim);
+    /* -- Afterburner Engine Flare -------------------------- */
+    Vector2 backDir = AngleToDir(p->rotation + 180.0f);
+    float flareLen = 14.0f + p->thrustAnim * 16.0f + p->boostAnim * 28.0f;
+    float flareW   = 6.0f + p->thrustAnim * 4.0f + p->boostAnim * 8.0f;
 
-    /* If high-res sprite is loaded, render the detailed textured ship! */
-    if (p->texSprite.id > 0) {
-        float drawSize = 68.0f; /* Scale matched to player hitbox */
-        Rectangle src = { 0.0f, 0.0f, (float)p->texSprite.width, (float)p->texSprite.height };
-        Rectangle dst = { p->pos.x, p->pos.y, drawSize, drawSize };
-        Vector2 origin = { drawSize * 0.5f, drawSize * 0.5f };
+    Vector2 enginePos = Vec2Add(p->pos, Vec2Scale(backDir, 16.0f));
+    Vector2 flareTip  = Vec2Add(enginePos, Vec2Scale(backDir, flareLen));
+    Vector2 rightDir  = AngleToDir(p->rotation + 90.0f);
 
-        Color tint = WHITE;
-        if (p->flashTimer > 0.0f) {
-            tint = (Color){ 255, 130, 130, 255 };
-        }
-        DrawTexturePro(p->texSprite, src, dst, origin, p->rotation, tint);
+    Vector2 fl1 = Vec2Add(enginePos, Vec2Scale(rightDir, flareW * 0.5f));
+    Vector2 fl2 = Vec2Add(enginePos, Vec2Scale(rightDir, -flareW * 0.5f));
 
-        /* Wingtip heavy weapon glow */
-        if (p->weapon != WEAPON_SINGLE) {
-            float rotRad = DEG2RAD(p->rotation);
-            float cosR = cosf(rotRad), sinR = sinf(rotRad);
-            Vector2 gunL = { p->pos.x + (-20.0f)*cosR - (0.0f)*sinR, p->pos.y + (-20.0f)*sinR + (0.0f)*cosR };
-            Vector2 gunR = { p->pos.x + ( 20.0f)*cosR - (0.0f)*sinR, p->pos.y + ( 20.0f)*sinR + (0.0f)*cosR };
-            Color wc = (p->weapon == WEAPON_RAPID)  ? (Color){255, 120, 0, 255} :
-                       (p->weapon == WEAPON_DOUBLE) ? (Color){0, 240, 255, 255} : (Color){255, 220, 0, 255};
-            DrawCircleV(gunL, 3.0f, wc);
-            DrawCircleV(gunR, 3.0f, wc);
-        }
-        return;
-    }
+    Color flareCol = p->isBoosting ? (Color){ 255, 120, 30, 255 } : (Color){ 0, 200, 255, 230 };
+    DrawTriangle(fl1, fl2, flareTip, flareCol);
+    DrawCircleV(enginePos, flareW * 0.6f, (Color){ 255, 255, 255, 240 });
 
-    /* -- HK-01 Interceptor Top-Down Pixel-Style Rendering with 2.5D Banking -- */
+    /* -- HK-01 Vanguard Starfighter Render ----------------- */
     float rot = DEG2RAD(p->rotation);
-    float cosR = cosf(rot);
-    float sinR = sinf(rot);
-    float bank = p->bankAngle; /* -1.0 to +1.0 for 3D roll perspective */
+    float c = cosf(rot);
+    float s = sinf(rot);
+    float bankScale = 1.0f - fabsf(p->bankAngle) * 0.28f;
 
-    /* Helper macros: rotate local point around ship center */
-    #define RPB(lx, ly) RotateBankPoint(p->pos, (float)(lx), (float)(ly), cosR, sinR, bank)
-    #define RP(lx, ly)  (Vector2){ p->pos.x + (lx)*cosR - (ly)*sinR, \
-                                   p->pos.y + (lx)*sinR + (ly)*cosR }
+    #define RP(ox, oy) ((Vector2){ p->pos.x + ((ox) * c - (oy) * s), p->pos.y + ((ox) * s + (oy) * c) })
+    #define RPB(ox, oy) ((Vector2){ p->pos.x + (((ox) * bankScale) * c - (oy) * s), p->pos.y + (((ox) * bankScale) * s + (oy) * c) })
 
-    /* Color Palette matching reference image HK-01 */
-    Color colHullWhite = { 236, 240, 248, 255 }; /* Pristine off-white hull plates */
-    Color colHullShade = { 180, 192, 208, 255 }; /* Shaded panel shadow */
-    Color colDarkFrame = {  48,  54,  68, 255 }; /* Mechanical panel seams & gun barrels */
-    Color colRedTrim   = { 220,  34,  46, 255 }; /* Signature HK-01 Racing Red */
-    Color colRedDark   = { 142,  16,  26, 255 }; /* Dark crimson border */
-    Color colVentGlow  = { 255, 160,  20, 255 }; /* Glowing amber heatsink radiators */
-    Color colVentCore  = { 255, 230,  80, 255 }; /* Radiant heatsink core */
-    Color colCockpit   = {   0, 210, 255, 230 }; /* Glossy cyan cockpit canopy */
-    Color colCockpitGlint = { 220, 255, 255, 255 }; /* Specular reflection */
+    /* Hull shadow / underglow */
+    DrawTriangle(RPB(-22, 14), RPB(22, 14), RP(0, -22), (Color){ 10, 18, 35, 220 });
 
-    /* Hit flash when taking damage */
-    if (p->flashTimer > 0.0f) {
-        float frac = p->flashTimer / 0.3f;
-        colHullWhite = ColorLerp(colHullWhite, WHITE, frac);
-        colRedTrim   = ColorLerp(colRedTrim,   WHITE, frac);
-        colDarkFrame = ColorLerp(colDarkFrame, WHITE, frac);
-    }
+    /* Wing Panels */
+    DrawTriangle(RPB(-24, 12), RPB(-6, 2), RP(0, -18), (Color){ 45, 65, 95, 255 });
+    DrawTriangle(RPB( 24, 12), RP(0, -18), RPB( 6, 2), (Color){ 45, 65, 95, 255 });
 
-    /* 1. Swept Delta Wings (White base with underside shadow and banking) */
-    Vector2 wingL[3] = { RP( 0, -6), RPB(-21,  9), RPB(-6, 14) };
-    Vector2 wingR[3] = { RP( 0, -6), RPB( 21,  9), RPB( 6, 14) };
-    DrawTriangle(wingL[0], wingL[1], wingL[2], colHullWhite);
-    DrawTriangle(wingR[0], wingR[2], wingR[1], colHullWhite);
-    /* Wing panel shadow trim */
-    DrawLineV(wingL[1], wingL[2], colHullShade);
-    DrawLineV(wingR[1], wingR[2], colHullShade);
+    /* Main Titanium Fuselage */
+    DrawTriangle(RPB(-10, 10), RPB(10, 10), RP(0, -24), (Color){ 215, 230, 245, 255 });
 
-    /* 2. Bold Crimson Red Wing Leading Edge Trim (Iconic HK-01 Styling) */
-    Vector2 redStripeL[3] = { RP( 0, -4), RPB(-21,  9), RPB(-15,  7) };
-    Vector2 redStripeR[3] = { RP( 0, -4), RPB( 15,  7), RPB( 21,  9) };
-    DrawTriangle(redStripeL[0], redStripeL[1], redStripeL[2], colRedTrim);
-    DrawTriangle(redStripeR[0], redStripeR[1], redStripeR[2], colRedTrim);
-    DrawLineV(redStripeL[0], redStripeL[1], colRedDark);
-    DrawLineV(redStripeR[0], redStripeR[2], colRedDark);
+    /* Cockpit Canopy */
+    DrawTriangle(RPB(-5, -2), RPB(5, -2), RP(0, -16), (Color){ 0, 230, 255, 255 });
+    DrawCircleV(RP(0, -8), 3.0f, (Color){ 200, 255, 255, 255 });
 
-    /* 3. Wingtip Autocannons */
-    Vector2 gunL1 = RPB(-20,  9), gunL2 = RPB(-20, -2);
-    Vector2 gunR1 = RPB( 20,  9), gunR2 = RPB( 20, -2);
-    DrawLineEx(gunL1, gunL2, 2.5f, colDarkFrame);
-    DrawLineEx(gunR1, gunR2, 2.5f, colDarkFrame);
-    DrawCircleV(gunL2, 1.8f, (Color){ 0, 220, 255, 255 });
-    DrawCircleV(gunR2, 1.8f, (Color){ 0, 220, 255, 255 });
-
-    /* 4. Twin Vertical Tail Stabilizer Fins (Tilted during bank roll) */
-    float finTilt = bank * 3.5f;
-    Vector2 finL[3] = { RPB(-9 + finTilt, 8), RPB(-12 + finTilt, 16), RPB(-7 + finTilt, 16) };
-    Vector2 finR[3] = { RPB( 9 + finTilt, 8), RPB(  7 + finTilt, 16), RPB(12 + finTilt, 16) };
-    DrawTriangle(finL[0], finL[1], finL[2], colHullWhite);
-    DrawTriangle(finR[0], finR[1], finR[2], colHullWhite);
-    DrawLineV(finL[1], finL[2], colRedTrim);
-    DrawLineV(finR[1], finR[2], colRedTrim);
-
-    /* 5. Central Needle Fuselage (White forward hull) */
-    Vector2 noseP[3] = { RP(0, -22), RP(-7, 9), RP(7, 9) };
-    DrawTriangle(noseP[0], noseP[1], noseP[2], colHullWhite);
-    DrawTriangleLines(noseP[0], noseP[1], noseP[2], colDarkFrame);
-
-    /* Crimson Nose Chevron */
-    Vector2 noseRed[3] = { RP(0, -22), RP(-3.5f, -14), RP(3.5f, -14) };
-    DrawTriangle(noseRed[0], noseRed[1], noseRed[2], colRedTrim);
-
-    /* 6. Glowing Amber/Orange Heatsink Vents (Left & Right Flanks) */
-    float ventPulse = 0.85f + 0.15f * sinf(GetTime() * 14.0f) + p->boostAnim * 0.4f;
-    Color ventColor = ColorAlpha(colVentGlow, MIN(1.0f, ventPulse));
-    Vector2 ventL1 = RPB(-6, 2), ventL2 = RPB(-6, 7);
-    Vector2 ventR1 = RPB( 6, 2), ventR2 = RPB( 6, 7);
-    DrawLineEx(ventL1, ventL2, 3.2f + p->boostAnim * 1.2f, ventColor);
-    DrawLineEx(ventR1, ventR2, 3.2f + p->boostAnim * 1.2f, ventColor);
-    DrawLineEx(ventL1, ventL2, 1.4f, colVentCore);
-    DrawLineEx(ventR1, ventR2, 1.4f, colVentCore);
-
-    /* 7. Glossy Cyan Cockpit Canopy with Specular Glint */
-    Vector2 cockpitPos = RP(bank * 1.2f, -5);
-    DrawCircleV(cockpitPos, 5.2f, colDarkFrame);
-    DrawCircleV(cockpitPos, 4.2f, colCockpit);
-    /* Specular glass reflection streak */
-    DrawLineV(RP(-1.5f + bank, -7.0f), RP(1.5f + bank, -4.5f), colCockpitGlint);
-    DrawPixelV(RP(0.5f + bank, -6.5f), WHITE);
-
-    /* 8. Rear Cylindrical Engine Turbine Nozzle */
-    Vector2 nozzlePos = RP(0, 13);
-    DrawRectanglePro(
-        (Rectangle){ nozzlePos.x, nozzlePos.y, 8.0f, 4.0f },
-        (Vector2){ 4.0f, 2.0f },
-        p->rotation,
-        colDarkFrame
-    );
-    DrawCircleV(RP(0, 14), 3.0f, (Color){ 255, 140, 20, 255 });
-
-    /* 9. Upgraded Weapon Glow Indicator */
-    if (p->weapon != WEAPON_SINGLE) {
-        float pulse = 0.6f + 0.4f * sinf(GetTime() * 12.0f);
-        Color wc;
-        if (p->weapon == WEAPON_RAPID) {
-            wc = (Color){255, 100, 0, (unsigned char)(140 * pulse)};
-        } else if (p->weapon == WEAPON_SPREAD) {
-            wc = (Color){255, 220, 0, (unsigned char)(140 * pulse)};
-        } else {
-            wc = (Color){0, 255, 180, (unsigned char)(140 * pulse)};
-        }
-        DrawCircleV(RP(-19, 0), 4.0f, wc);
-        DrawCircleV(RP( 19, 0), 4.0f, wc);
-    }
-
-    /* 10. Visual Tier Hull Upgrades (Mk II, Mk III, Mk IV) */
-    if (p->shipTier >= SHIP_TIER_MK2) {
-        /* Mk II: Reinforced Titanium Prow Plating & Flank Sponsons */
-        Vector2 armorL[3] = { RP(-4.0f, -14.0f), RPB(-9.0f, -2.0f), RP(-4.0f, 2.0f) };
-        Vector2 armorR[3] = { RP( 4.0f, -14.0f), RPB( 9.0f, -2.0f), RP( 4.0f, 2.0f) };
-        DrawTriangle(armorL[0], armorL[1], armorL[2], (Color){ 70, 80, 100, 255 });
-        DrawTriangle(armorR[0], armorR[2], armorR[1], (Color){ 70, 80, 100, 255 });
-        DrawLineV(armorL[0], armorL[1], (Color){ 140, 160, 190, 255 });
-        DrawLineV(armorR[0], armorR[1], (Color){ 140, 160, 190, 255 });
-    }
-
-    if (p->shipTier >= SHIP_TIER_MK3) {
-        /* Mk III: Glowing Cyan Plasma Conduits etched into the swept wings */
-        float plasmaPulse = 0.7f + 0.3f * sinf(GetTime() * 12.0f);
-        Color conduitCol = (Color){ 0, 240, 255, (unsigned char)(220 * plasmaPulse) };
-        DrawLineEx(RP(0, -6), RPB(-16, 8), 1.8f, conduitCol);
-        DrawLineEx(RP(0, -6), RPB( 16, 8), 1.8f, conduitCol);
-        DrawCircleV(RPB(-20, -2), 2.5f, (Color){ 0, 255, 220, 255 });
-        DrawCircleV(RPB( 20, -2), 2.5f, (Color){ 0, 255, 220, 255 });
-    }
-
-    if (p->shipTier >= SHIP_TIER_MK4) {
-        /* Mk IV: Ascendant Royal Gold Trims & Particle Energy Radiance */
-        float goldPulse = 0.8f + 0.2f * sinf(GetTime() * 8.0f);
-        Color goldCol = (Color){ 255, 215, 0, (unsigned char)(230 * goldPulse) };
-        DrawLineEx(RP(0, -22), RPB(-21, 9), 2.2f, goldCol);
-        DrawLineEx(RP(0, -22), RPB( 21, 9), 2.2f, goldCol);
-        DrawCircleV(RP(0, -5), 3.0f, goldCol);
+    /* Torpedo Hardpoint Pods */
+    if (p->torpedoLevel > 0) {
+        DrawRectangleV(RPB(-18, 2), (Vector2){ 3.0f, 7.0f }, (Color){ 255, 140, 20, 255 });
+        DrawRectangleV(RPB( 15, 2), (Vector2){ 3.0f, 7.0f }, (Color){ 255, 140, 20, 255 });
     }
 
     #undef RP
     #undef RPB
 }
 
-/*        Combat                                                                                                                                      */
+/* -- Combat ---------------------------------------------------------------- */
 
 void Player_TakeDamage(Player *p, int dmg) {
-    if (p->dead) return;
-    if (p->iFrameTimer > 0.0f) return;
-    if (p->invincibleTimer > 0.0f) return;
+    if (p->dead || p->iFrameTimer > 0.0f || p->invincibleTimer > 0.0f) return;
 
+    p->shieldRechargeTimer = 4.5f; /* Reset shield recharge cooldown */
+
+    /* Deflector Shield absorbs damage first */
     if (p->shieldActive) {
-        /* Shield absorbs the hit */
-        p->shieldTimer = 0.0f;
         p->shieldActive = 0;
         p->iFrameTimer = 0.6f;
         p->flashTimer  = 0.2f;
         return;
     }
 
-    p->health -= dmg;
+    if (p->shield > 0) {
+        if (p->shield >= dmg) {
+            p->shield -= dmg;
+            p->flashTimer = 0.2f;
+            p->iFrameTimer = 0.35f;
+            return;
+        } else {
+            dmg -= p->shield;
+            p->shield = 0;
+        }
+    }
+
+    /* Apply Armor damage reduction */
+    int effectiveDmg = (int)((float)dmg * (1.0f - p->armorReduction));
+    if (effectiveDmg < 1) effectiveDmg = 1;
+
+    p->health -= effectiveDmg;
     p->flashTimer = 0.3f;
     p->iFrameTimer = PLAYER_IFRAMES;
 
@@ -508,9 +396,10 @@ void Player_TakeDamage(Player *p, int dmg) {
         p->health = 0;
         p->lives--;
         if (p->lives > 0) {
-            /* Respawn     reset health but keep lives */
-            p->health = PLAYER_MAX_HEALTH;
-            p->iFrameTimer = 3.0f; /* longer grace period on respawn */
+            /* Respawn - restore health & shield */
+            p->health = p->maxHealth;
+            p->shield = p->maxShield;
+            p->iFrameTimer = 3.0f;
             p->vel = (Vector2){0, 0};
         } else {
             p->dead = 1;
@@ -527,13 +416,20 @@ int Player_TryShoot(Player *p, float dt) {
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         Vector2 mpos = GetMousePosition();
         int sw = GetScreenWidth();
-        /* Do not fire if clicking HUD buttons in top right */
         if (!(mpos.x > (float)(sw - 260) && mpos.y < 65.0f)) {
             mouseFire = 1;
         }
     }
 
-    if (!IsKeyDown(KEY_SPACE) && !IsKeyDown(KEY_J) && !IsKeyDown(KEY_Z) && !mouseFire) return 0;
+    int padFire = 0;
+    if (p->hasGamepad) {
+        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) ||
+            GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.25f) {
+            padFire = 1;
+        }
+    }
+
+    if (!IsKeyDown(KEY_SPACE) && !IsKeyDown(KEY_J) && !IsKeyDown(KEY_Z) && !mouseFire && !padFire) return 0;
 
     float cooldown = BULLET_COOLDOWN;
     if (p->weapon == WEAPON_RAPID) cooldown *= 0.35f;
@@ -544,24 +440,40 @@ int Player_TryShoot(Player *p, float dt) {
     return 1;
 }
 
+int Player_CanFireTorpedo(const Player *p) {
+    if (p->dead || p->torpedoLevel <= 0) return 0;
+    if (p->torpedoTimer > 0.0f) return 0;
+
+    if (IsKeyPressed(KEY_C) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) return 1;
+
+    if (p->hasGamepad && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
+                          IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1))) {
+        return 1;
+    }
+    return 0;
+}
+
+void Player_TriggerTorpedoCooldown(Player *p) {
+    p->torpedoTimer = p->torpedoCooldown;
+}
+
 void Player_ApplyPowerup(Player *p, int powerupType) {
     switch (powerupType) {
         case 0: /* POWERUP_HEALTH */
-            p->health = MIN(PLAYER_MAX_HEALTH, p->health + POWERUP_HEALTH_RESTORE);
+            p->health = MIN(p->maxHealth, p->health + POWERUP_HEALTH_RESTORE);
             break;
         case 1: /* POWERUP_SHIELD */
             p->shieldTimer = POWERUP_SHIELD_DURATION;
             p->shieldActive = 1;
+            p->shield = p->maxShield;
             break;
         case 2: /* POWERUP_RAPIDFIRE */
-            /* Cancel competing weapon timers so rapid-fire takes priority */
             p->doubleShotTimer = 0.0f;
             p->spreadShotTimer = 0.0f;
             p->rapidFireTimer  = POWERUP_RAPIDFIRE_DURATION;
             p->weapon = WEAPON_RAPID;
             break;
         case 3: /* POWERUP_DOUBLESHOT */
-            /* Only apply if no higher-priority weapon is active */
             p->spreadShotTimer = 0.0f;
             if (p->rapidFireTimer <= 0.0f) {
                 p->doubleShotTimer = POWERUP_DOUBLESHOT_DURATION;
@@ -569,7 +481,6 @@ void Player_ApplyPowerup(Player *p, int powerupType) {
             }
             break;
         case 4: /* POWERUP_SPREAD */
-            /* Cancel competing weapon timers */
             p->doubleShotTimer = 0.0f;
             if (p->rapidFireTimer <= 0.0f) {
                 p->spreadShotTimer = POWERUP_SPREAD_DURATION;
@@ -586,4 +497,3 @@ void Player_ApplyPowerup(Player *p, int powerupType) {
 int Player_IsAlive(const Player *p) {
     return !p->dead;
 }
-

@@ -46,10 +46,14 @@ typedef struct {
     float      strafeDir;   /* +1 or -1 */
     float      deathTimer;
 
-    /* Boss-specific */
+    /* Boss-specific multi-phase mechanics */
     int        bossPhase;
     float      bossAttackTimer;
-    float      bossMovAngle;  /* oscillation angle for boss pattern */
+    float      bossMovAngle;     /* oscillation angle for boss pattern */
+    float      beamChargeTimer;  /* warning telegraph timer */
+    float      beamActiveTimer;  /* sweeping thermal lance timer */
+    float      beamAngle;        /* current beam angle in degrees */
+    int        hasShieldTurrets; /* orbital shield sub-nodes active */
 } Enemy;
 
 typedef struct {

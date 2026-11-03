@@ -136,6 +136,10 @@ void Enemy_SpawnSectorBoss(EnemyPool *pool, int sector, int screenW, int screenH
     InitEnemy(e, ENEMY_BOSS, pos);
     e->bossPhase = 1;
     e->bossMovAngle = 0.0f;
+    e->beamChargeTimer = 4.5f;
+    e->beamActiveTimer = 0.0f;
+    e->beamAngle = 180.0f;
+    e->hasShieldTurrets = 1;
     /* Scale Boss HP across sectors */
     e->health = BOSS_HEALTH + sector * 120;
     e->healthMax = e->health;
@@ -322,18 +326,27 @@ static void BomberAI(Enemy *e, Vector2 playerPos, float dt) {
 }
 
 static void BossAI(Enemy *e, Vector2 playerPos, int screenW, int screenH, float dt) {
-    /* Phase 2 at 50% HP */
     float hpFrac = (float)e->health / (float)e->healthMax;
-    e->bossPhase = (hpFrac < BOSS_PHASE2_HP_THRESHOLD) ? 2 : 1;
+    if (hpFrac > 0.65f) {
+        e->bossPhase = 1;
+        e->hasShieldTurrets = 1;
+    } else if (hpFrac > 0.30f) {
+        e->bossPhase = 2;
+        e->hasShieldTurrets = 0;
+    } else {
+        e->bossPhase = 3;
+        e->hasShieldTurrets = 0;
+    }
 
     /* Oscillate across the top portion of the screen */
-    e->bossMovAngle += dt * (e->bossPhase == 2 ? 1.4f : 0.8f);
+    float movFactor = (e->bossPhase == 3) ? 1.8f : (e->bossPhase == 2 ? 1.3f : 0.8f);
+    e->bossMovAngle += dt * movFactor;
     float targetX = (float)screenW * 0.5f + cosf(e->bossMovAngle) * (float)screenW * 0.35f;
     float targetY = (float)screenH * 0.18f + sinf(e->bossMovAngle * 0.5f) * (float)screenH * 0.08f;
 
     Vector2 target = { targetX, targetY };
     Vector2 dir = Vec2Norm(Vec2Sub(target, e->pos));
-    float speed = BOSS_SPEED * (e->bossPhase == 2 ? 1.5f : 1.0f);
+    float speed = BOSS_SPEED * (e->bossPhase == 3 ? 1.7f : (e->bossPhase == 2 ? 1.4f : 1.0f));
     e->vel.x += dir.x * speed * 3.0f * dt;
     e->vel.y += dir.y * speed * 3.0f * dt;
     float s = Vec2Len(e->vel);
@@ -346,6 +359,32 @@ static void BossAI(Enemy *e, Vector2 playerPos, int screenW, int screenH, float 
     while (diff >  180.0f) diff -= 360.0f;
     while (diff < -180.0f) diff += 360.0f;
     e->rotation += diff * MIN(1.0f, dt * 2.0f);
+
+    /* Multi-Phase Solar Thermal Lance */
+    if (e->bossPhase >= 2) {
+        if (e->beamActiveTimer > 0.0f) {
+            e->beamActiveTimer -= dt;
+            e->beamAngle += (e->strafeDir > 0.0f ? 35.0f : -35.0f) * dt;
+            if (e->beamActiveTimer <= 0.0f) {
+                e->beamChargeTimer = (e->bossPhase == 3) ? 4.0f : 5.5f;
+                e->strafeDir = -e->strafeDir;
+            }
+        } else {
+            e->beamChargeTimer -= dt;
+            float bDiff = targetAngle - e->beamAngle;
+            while (bDiff >  180.0f) bDiff -= 360.0f;
+            while (bDiff < -180.0f) bDiff += 360.0f;
+            e->beamAngle += bDiff * MIN(1.0f, dt * 3.5f);
+
+            if (e->beamChargeTimer <= 0.0f) {
+                e->beamActiveTimer = 1.6f;
+            }
+        }
+    } else {
+        e->beamChargeTimer = 4.0f;
+        e->beamActiveTimer = 0.0f;
+        e->beamAngle = e->rotation;
+    }
 }
 
 /*           Update                                                                                                                                   */
@@ -611,13 +650,60 @@ static void DrawBoss(const Enemy *e) {
     #define RP(lx, ly) (Vector2){ e->pos.x + (lx)*c - (ly)*s, e->pos.y + (lx)*s + (ly)*c }
 
     int phase = e->bossPhase;
-    float pulse = 0.5f + 0.5f * sinf((float)GetTime() * (phase == 2 ? 8.0f : 4.0f));
+    float curTime = (float)GetTime();
+    float pulse = 0.5f + 0.5f * sinf(curTime * (phase == 3 ? 12.0f : (phase == 2 ? 8.0f : 4.0f)));
     float r = e->radius;
 
+    /* A. Multi-Phase Telegraph / Solar Thermal Lance Beam */
+    if (phase >= 2) {
+        float bRad = DEG2RAD(e->beamAngle);
+        Vector2 bDir = { sinf(bRad), -cosf(bRad) };
+        Vector2 bStart = { e->pos.x + bDir.x * (r * 0.9f), e->pos.y + bDir.y * (r * 0.9f) };
+        Vector2 bEnd   = { bStart.x + bDir.x * 1200.0f, bStart.y + bDir.y * 1200.0f };
+
+        if (e->beamActiveTimer > 0.0f) {
+            /* Firing Sweeping Solar Thermal Lance */
+            float intensity = CLAMP(e->beamActiveTimer / 0.3f, 0.2f, 1.0f);
+            DrawLineEx(bStart, bEnd, 28.0f * intensity, (Color){ 255, 60, 20, (unsigned char)(140 * intensity) });
+            DrawLineEx(bStart, bEnd, 14.0f * intensity, (Color){ 255, 200, 50, (unsigned char)(210 * intensity) });
+            DrawLineEx(bStart, bEnd, 4.0f  * intensity, WHITE);
+            /* Emitter flash burst */
+            DrawCircleV(bStart, 16.0f * pulse, (Color){ 255, 220, 100, 240 });
+        } else if (e->beamChargeTimer < 2.0f) {
+            /* Warning Telegraph Targeting Laser (Flickering Crimson Line) */
+            float flash = (sinf(curTime * 24.0f) > 0.0f) ? 1.0f : 0.4f;
+            DrawLineEx(bStart, bEnd, 1.5f, (Color){ 255, 30, 30, (unsigned char)(180 * flash) });
+            DrawCircleV(bStart, 6.0f * pulse, (Color){ 255, 40, 40, 200 });
+        }
+    }
+
+    /* B. Phase 3 Gravitational Singularity Distortion Rings */
+    if (phase == 3) {
+        for (int ring = 1; ring <= 3; ring++) {
+            float frac = fmodf(curTime * 1.5f + (float)ring * 0.33f, 1.0f);
+            float ringR = (r * 1.6f) * (1.0f - frac);
+            DrawCircleLinesV(e->pos, ringR, (Color){ 160, 40, 255, (unsigned char)(180 * frac) });
+        }
+    }
+
+    /* C. Phase 1 Revolving Shield Turret Nodes */
+    if (e->hasShieldTurrets) {
+        for (int k = 0; k < 3; k++) {
+            float nodeAng = curTime * 2.2f + (float)k * (2.0f * PI / 3.0f);
+            Vector2 nodePos = { e->pos.x + cosf(nodeAng) * (r * 1.35f),
+                                e->pos.y + sinf(nodeAng) * (r * 1.35f) };
+            DrawLineEx(e->pos, nodePos, 1.2f, (Color){ 0, 220, 255, (unsigned char)(80 + pulse * 60) });
+            DrawCircleV(nodePos, 5.0f, (Color){ 0, 180, 255, 230 });
+            DrawCircleV(nodePos, 2.5f, WHITE);
+        }
+    }
+
     /* 1. Deflector Shield Aura */
-    Color shieldColor = (phase == 2) ?
+    Color shieldColor = (phase == 3) ?
+        (Color){ 200,  30, 255, (unsigned char)(80 + pulse * 100) } :
+        (phase == 2 ?
         (Color){ 255,  40,  20, (unsigned char)(60 + pulse * 90) } :
-        (Color){ 180,  20, 220, (unsigned char)(40 + pulse * 60) };
+        (Color){ 0,   180, 240, (unsigned char)(40 + pulse * 60) });
     DrawCircleV(e->pos, r + 14.0f * pulse, shieldColor);
 
     /* 2. Massive Wedge-Shaped Dreadnought Hull (Arrowhead Prow forward at (0, r)) */

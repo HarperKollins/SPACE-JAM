@@ -1,5 +1,5 @@
 /**
- * menu.h - Menu rendering and interaction
+ * menu.h - Menu rendering, Hangar Workshop, Codex Archives, and dialogue interaction
  */
 #ifndef SPACEJAM_MENU_H
 #define SPACEJAM_MENU_H
@@ -35,6 +35,16 @@ typedef struct {
     float      prologueScroll;
     CommsState comms;
     int        selectedMedal;
+
+    /* Hangar workshop */
+    int        selectedUpgrade;
+    float      hangarAnim;
+
+    /* Galactic Archives / Codex */
+    int        codexTab;    /* 0 = Lore, 1 = Dossiers, 2 = Vessels */
+    int        codexItem;   /* selected entry within current tab */
+    float      codexAnim;
+
     /* Portrait and ship textures (loaded once, freed on shutdown) */
     Texture2D  texHarper;
     Texture2D  texVance;
@@ -68,6 +78,12 @@ void Menu_StartGenesisChoice(MenuState *ms);
 void Menu_UpdateGenesisChoice(MenuState *ms, GameContext *ctx, PlayerProgress *prog, float dt);
 void Menu_DrawGenesisChoice(const MenuState *ms, const PlayerProgress *prog, int screenW, int screenH);
 
+void Menu_UpdateHangar(MenuState *ms, GameContext *ctx, PlayerProgress *prog, float dt);
+void Menu_DrawHangar(const MenuState *ms, const GameContext *ctx, const PlayerProgress *prog, int screenW, int screenH);
+
+void Menu_UpdateCodex(MenuState *ms, GameContext *ctx, float dt);
+void Menu_DrawCodex(const MenuState *ms, const GameContext *ctx, int screenW, int screenH);
+
 void Menu_UpdateMedals(MenuState *ms, GameContext *ctx, float dt);
 void Menu_DrawMedals(const MenuState *ms, const PlayerProgress *prog, int screenW, int screenH);
 
@@ -84,4 +100,3 @@ void Menu_UpdateControls(MenuState *ms, GameContext *ctx, float dt);
 void Menu_DrawControls(const MenuState *ms, int screenW, int screenH);
 
 #endif /* SPACEJAM_MENU_H */
-

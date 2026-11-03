@@ -23,6 +23,7 @@ int Collision_Update(
     PowerupPool    *powerups,
     ParticleSystem *particles,
     GameContext    *ctx,
+    PlayerProgress *prog,
     AudioManager   *audio)
 {
     int scoreEarned = 0;
@@ -41,16 +42,28 @@ int Collision_Update(
 
                 /* Hit effect */
                 Particles_SpawnSparks(particles, b->pos, 6, b->color);
+                if (b->isTorpedo) {
+                    Particles_SpawnExplosion(particles, b->pos, 32.0f, (Color){255, 140, 30, 255}, 20);
+                    ctx->screenShake = CLAMP(ctx->screenShake + 4.0f, 0.0f, SCREEN_SHAKE_MAX);
+                }
 
                 Enemy_TakeDamage(e, b->damage);
 
                 if (e->state == ESTATE_DYING) {
                     /* Kill confirmed */
                     int earned = e->score;
-                    /* Boss score */
                     if (e->type == ENEMY_BOSS) earned = BOSS_SCORE;
                     Game_AddScore(ctx, earned);
                     scoreEarned += earned;
+
+                    /* Salvage Credits reward */
+                    if (prog) {
+                        int salvage = (e->type == ENEMY_BOSS) ? 350 :
+                                      (e->type == ENEMY_BOMBER) ? 80 :
+                                      (e->type == ENEMY_TANK) ? 60 :
+                                      (e->type == ENEMY_INTERCEPTOR) ? 30 : 15;
+                        Progress_AddCredits(prog, salvage);
+                    }
 
                     /* Explosion sound */
                     if (e->type == ENEMY_BOSS) {
@@ -218,7 +231,7 @@ int Collision_Update(
             nextInterval = 3.8f + RandFloat(-0.2f, 0.4f);
             shouldFire = 1;
         } else if (e->type == ENEMY_BOSS && e->fireTimer <= 0.0f) {
-            nextInterval = 2.5f * (e->bossPhase == 2 ? 0.75f : 1.0f);
+            nextInterval = (e->bossPhase == 3) ? 1.4f : (e->bossPhase == 2 ? 1.8f : 2.5f);
             shouldFire = 1;
         }
 
@@ -250,22 +263,59 @@ int Collision_Update(
                 Projectile_SpawnEnemyEx(projectiles, e->pos, dir, 170.0f, 6.5f,
                                         14, (Color){ 180, 40, 255, 255 });
             } else if (e->type == ENEMY_BOSS) {
-                if (e->bossPhase == 2) {
-                    /* Phase 2: spread barrage (5 bullets) */
+                if (e->bossPhase == 3) {
+                    /* Phase 3: Desperation Core Overload 8-way rotating plasma spiral */
+                    float baseSpAng = (float)GetTime() * 90.0f;
+                    for (int k = 0; k < 8; k++) {
+                        Vector2 spiralDir = AngleToDir(baseSpAng + (float)k * 45.0f);
+                        Projectile_SpawnEnemyEx(projectiles, e->pos, spiralDir, 260.0f, 5.0f,
+                                                15, (Color){ 200, 40, 255, 255 });
+                    }
+                } else if (e->bossPhase == 2) {
+                    /* Phase 2: Heavy 5-way spread barrage */
                     for (int k = -2; k <= 2; k++) {
                         float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 14.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
                         Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 250.0f, 5.5f,
-                                                14, (Color){ 255, 30, 200, 255 });
+                                                14, (Color){ 255, 50, 80, 255 });
                     }
                 } else {
-                    /* Phase 1: aimed triple turbolasers */
+                    /* Phase 1: Aimed triple turbolasers */
                     for (int k = -1; k <= 1; k++) {
                         float spreadAngle = RAD2DEG(atan2f(dir.x, -dir.y)) + k * 16.0f;
                         Vector2 spreadDir = AngleToDir(spreadAngle);
                         Projectile_SpawnEnemyEx(projectiles, e->pos, spreadDir, 230.0f, 5.0f,
                                                 12, (Color){ 0, 230, 160, 255 });
                     }
+                }
+            }
+        }
+    }
+
+    /* Continuous Boss Beam & Singularity field interactions */
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        Enemy *e = &enemies->enemies[i];
+        if (!e->active || e->type != ENEMY_BOSS || !Player_IsAlive(player)) continue;
+
+        /* Phase 3 Singularity gravitational drag */
+        if (e->bossPhase == 3) {
+            Vector2 pull = Vec2Norm(Vec2Sub(e->pos, player->pos));
+            player->vel.x += pull.x * 65.0f * GetFrameTime();
+            player->vel.y += pull.y * 65.0f * GetFrameTime();
+        }
+
+        /* Thermal Lance sweeping beam damage */
+        if (e->beamActiveTimer > 0.0f) {
+            float bRad = DEG2RAD(e->beamAngle);
+            Vector2 bDir = { sinf(bRad), -cosf(bRad) };
+            Vector2 toP = Vec2Sub(player->pos, e->pos);
+            float proj = toP.x * bDir.x + toP.y * bDir.y;
+            if (proj > 20.0f && proj < 1200.0f) {
+                float perpDist = fabsf(toP.x * (-bDir.y) + toP.y * bDir.x);
+                if (perpDist < (PLAYER_RADIUS + 14.0f)) {
+                    Player_TakeDamage(player, 1);
+                    Particles_SpawnSparks(particles, player->pos, 3, (Color){ 255, 120, 30, 255 });
+                    ctx->screenShake = CLAMP(ctx->screenShake + 1.0f, 0.0f, SCREEN_SHAKE_MAX);
                 }
             }
         }

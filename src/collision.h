@@ -12,6 +12,7 @@
 #include "powerup.h"
 #include "particles.h"
 #include "game.h"
+#include "progress.h"
 #include "audio.h"
 
 /**
@@ -28,6 +29,7 @@ int Collision_Update(
     PowerupPool    *powerups,
     ParticleSystem *particles,
     GameContext    *ctx,
+    PlayerProgress *prog,
     AudioManager   *audio
 );
 

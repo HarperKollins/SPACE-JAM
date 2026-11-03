@@ -111,6 +111,7 @@ void Game_ChangeState(GameContext *ctx, GameState next) {
     if (next == STATE_MAIN_MENU || next == STATE_PROLOGUE ||
         next == STATE_COMMS     || next == STATE_SETTINGS  ||
         next == STATE_CONTROLS  || next == STATE_MEDALS    ||
+        next == STATE_HANGAR    || next == STATE_CODEX     ||
         next == STATE_GENESIS_CHOICE) {
         Audio_PlayMusicTrack(&g_audio, MUSIC_TRACK_INTRO);
     } else if (next == STATE_PLAYING || next == STATE_PAUSED) {
@@ -135,6 +136,7 @@ void Game_StartNewGame(GameContext *ctx) {
     int sh = GetScreenHeight();
 
     Player_Init(&g_player, sw, sh);
+    Player_ApplyUpgrades(&g_player, &g_prog);
     Enemies_Clear(&g_enemies);
     Asteroids_Clear(&g_asteroids);
     Particles_Clear(&g_particles);
@@ -319,7 +321,7 @@ void Game_Update(GameContext *ctx, float dt) {
 
             /* Shoot */
             if (Player_TryShoot(&g_player, dt)) {
-                int bulletDmg = BULLET_DAMAGE;
+                int bulletDmg = g_player.plasmaDamage;
                 if (g_relics.unlockedMask & (1u << VECTOR_GENESIS)) {
                     bulletDmg = (int)((float)BULLET_DAMAGE * 1.35f);
                 }
@@ -471,7 +473,7 @@ void Game_Update(GameContext *ctx, float dt) {
 
             /* Collision detection */
             Collision_Update(&g_player, &g_enemies, &g_asteroids,
-                             &g_projectiles, &g_powerups, &g_particles, ctx, &g_audio);
+                             &g_projectiles, &g_powerups, &g_particles, ctx, &g_prog, &g_audio);
 
             if (ctx->waveEnemiesKilled > killsBefore) {
                 int deltaKills = ctx->waveEnemiesKilled - killsBefore;
@@ -573,6 +575,14 @@ void Game_Update(GameContext *ctx, float dt) {
 
         case STATE_CONTROLS:
             Menu_UpdateControls(&g_menu, ctx, dt);
+            break;
+
+        case STATE_HANGAR:
+            Menu_UpdateHangar(&g_menu, ctx, &g_prog, dt);
+            break;
+
+        case STATE_CODEX:
+            Menu_UpdateCodex(&g_menu, ctx, dt);
             break;
 
         case STATE_VICTORY:
@@ -743,6 +753,10 @@ void Game_Draw(GameContext *ctx) {
             Menu_DrawSettings(&g_menu, ctx, sw, sh); break;
         case STATE_CONTROLS:
             Menu_DrawControls(&g_menu, sw, sh); break;
+        case STATE_HANGAR:
+            Menu_DrawHangar(&g_menu, ctx, &g_prog, sw, sh); break;
+        case STATE_CODEX:
+            Menu_DrawCodex(&g_menu, ctx, sw, sh); break;
         case STATE_VICTORY: {
             const char *vt = "YOU WIN!";
             int tw = MeasureText(vt, 60);

@@ -18,6 +18,8 @@ typedef enum {
     STATE_SETTINGS,
     STATE_CONTROLS,
     STATE_MEDALS,
+    STATE_HANGAR,
+    STATE_CODEX,
     STATE_VICTORY,
     STATE_GENESIS_CHOICE,
     STATE_COUNT
@@ -60,13 +62,12 @@ void Game_Init(GameContext *ctx);
 void Game_Update(GameContext *ctx, float dt);
 void Game_Draw(GameContext *ctx);
 void Game_Shutdown(GameContext *ctx);
-void Game_ChangeState(GameContext *ctx, GameState next);
 
-/* Score / wave helpers */
-void Game_AddScore(GameContext *ctx, int points);
-void Game_NextWave(GameContext *ctx);
+/* -- State control ------------------------------------- */
+void Game_ChangeState(GameContext *ctx, GameState next);
 void Game_StartNewGame(GameContext *ctx);
+void Game_NextWave(GameContext *ctx);
+void Game_AddScore(GameContext *ctx, int points);
 void Game_PlaySFX(int sfxId);
 
 #endif /* SPACEJAM_GAME_H */
-

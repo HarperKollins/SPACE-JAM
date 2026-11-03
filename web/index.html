@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SPACE JAM: The Last Vector — Official Web App</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="assets/textures/vanguard.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-container">
+    <div id="top-nav">
+      <button class="hud-btn" id="btn-fullscreen">FULLSCREEN</button>
+      <button class="hud-btn" id="btn-audio">AUDIO: ON</button>
+    </div>
+
+    <canvas id="game-canvas" width="1280" height="720" tabindex="1"></canvas>
+
+    <!-- Mobile touch overlay -->
+    <div id="touch-controls">
+      <div style="display:flex; gap:14px;">
+        <button class="touch-btn" id="btn-left">◀</button>
+        <button class="touch-btn" id="btn-right">▶</button>
+      </div>
+      <div style="display:flex; gap:14px;">
+        <button class="touch-btn" id="btn-thrust" style="border-color:#00ffaa; color:#00ffaa;">THRUST</button>
+        <button class="touch-btn" id="btn-fire" style="border-color:#ff3366; color:#ff3366;">FIRE</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
+

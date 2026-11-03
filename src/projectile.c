@@ -1,17 +1,23 @@
 /**
- * projectile.c - Player and enemy projectile management
+ * projectile.c - Player, enemy, and photon torpedo projectile management
  */
 #include "projectile.h"
 #include "utils.h"
 #include <math.h>
 
 void Projectiles_Init(ProjectilePool *pool) {
-    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) pool->player[i].active = 0;
-    for (int i = 0; i < MAX_ENEMY_BULLETS;  i++) pool->enemy[i].active  = 0;
+    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
+        pool->player[i].active = 0;
+        pool->player[i].isTorpedo = 0;
+    }
+    for (int i = 0; i < MAX_ENEMY_BULLETS;  i++) {
+        pool->enemy[i].active  = 0;
+        pool->enemy[i].isTorpedo = 0;
+    }
 }
 
 void Projectiles_Update(ProjectilePool *pool, float dt, int screenW, int screenH) {
-    /* Player bullets */
+    /* Player bullets & torpedoes */
     for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
         Projectile *b = &pool->player[i];
         if (!b->active) continue;
@@ -20,8 +26,8 @@ void Projectiles_Update(ProjectilePool *pool, float dt, int screenW, int screenH
         b->pos.y += b->vel.y * dt;
         b->life -= dt;
         if (b->life <= 0.0f ||
-            b->pos.x < -20 || b->pos.x > screenW + 20 ||
-            b->pos.y < -20 || b->pos.y > screenH + 20) {
+            b->pos.x < -30 || b->pos.x > screenW + 30 ||
+            b->pos.y < -30 || b->pos.y > screenH + 30) {
             b->active = 0;
         }
     }
@@ -34,26 +40,33 @@ void Projectiles_Update(ProjectilePool *pool, float dt, int screenW, int screenH
         b->pos.y += b->vel.y * dt;
         b->life -= dt;
         if (b->life <= 0.0f ||
-            b->pos.x < -20 || b->pos.x > screenW + 20 ||
-            b->pos.y < -20 || b->pos.y > screenH + 20) {
+            b->pos.x < -30 || b->pos.x > screenW + 30 ||
+            b->pos.y < -30 || b->pos.y > screenH + 30) {
             b->active = 0;
         }
     }
 }
 
 void Projectiles_Draw(const ProjectilePool *pool) {
-    /* Player bullets - neon cyan laser */
+    /* Player bullets & Torpedoes */
     for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
         const Projectile *b = &pool->player[i];
         if (!b->active) continue;
 
-        /* Trail line from prevPos to pos */
-        DrawLineEx(b->prevPos, b->pos, 3.0f, (Color){0, 200, 255, 120});
-        /* Core */
-        DrawLineEx(b->prevPos, b->pos, 1.5f, (Color){180, 255, 255, 255});
-        /* Tip glow */
-        DrawCircleV(b->pos, b->radius, (Color){0, 220, 255, 255});
-        DrawCircleV(b->pos, b->radius * 2.0f, (Color){0, 180, 255, 60});
+        if (b->isTorpedo) {
+            /* Heavy Photon Torpedo: fiery orange/gold comet with radiant shockwave core */
+            DrawLineEx(b->prevPos, b->pos, 6.0f, (Color){255, 100, 20, 140});
+            DrawLineEx(b->prevPos, b->pos, 3.0f, (Color){255, 230, 80, 255});
+            DrawCircleV(b->pos, b->radius * 1.8f, (Color){255, 140, 30, 80});
+            DrawCircleV(b->pos, b->radius, (Color){255, 240, 160, 255});
+            DrawCircleLines((int)b->pos.x, (int)b->pos.y, b->radius * 2.2f, (Color){255, 180, 50, 160});
+        } else {
+            /* Standard Neon cyan laser */
+            DrawLineEx(b->prevPos, b->pos, 3.0f, (Color){0, 200, 255, 120});
+            DrawLineEx(b->prevPos, b->pos, 1.5f, (Color){180, 255, 255, 255});
+            DrawCircleV(b->pos, b->radius, (Color){0, 220, 255, 255});
+            DrawCircleV(b->pos, b->radius * 2.0f, (Color){0, 180, 255, 60});
+        }
     }
 
     /* Enemy bullets - orange/red */
@@ -79,12 +92,34 @@ int Projectile_SpawnPlayer(ProjectilePool *pool, Vector2 pos, Vector2 dir, int d
         b->radius  = BULLET_RADIUS;
         b->damage  = damage;
         b->owner   = PROJ_PLAYER;
+        b->isTorpedo = 0;
         b->color   = (Color){0, 220, 255, 255};
         b->trailColor = (Color){0, 120, 200, 180};
         b->active  = 1;
         return 1;
     }
-    return 0; /* pool full */
+    return 0;
+}
+
+int Projectile_SpawnTorpedo(ProjectilePool *pool, Vector2 pos, Vector2 dir, int damage) {
+    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
+        Projectile *b = &pool->player[i];
+        if (b->active) continue;
+        b->pos     = pos;
+        b->prevPos = pos;
+        b->vel     = Vec2Scale(dir, BULLET_SPEED * 0.72f);
+        b->life    = 3.5f;
+        b->radius  = 6.5f;
+        b->damage  = damage;
+        b->owner   = PROJ_TORPEDO;
+        b->isTorpedo = 1;
+        b->homingTurnRate = 6.0f;
+        b->color   = (Color){255, 200, 60, 255};
+        b->trailColor = (Color){255, 80, 20, 200};
+        b->active  = 1;
+        return 1;
+    }
+    return 0;
 }
 
 int Projectile_SpawnEnemy(ProjectilePool *pool, Vector2 pos, Vector2 dir,
@@ -104,6 +139,7 @@ int Projectile_SpawnEnemyEx(ProjectilePool *pool, Vector2 pos, Vector2 dir,
         b->radius  = radius;
         b->damage  = damage;
         b->owner   = PROJ_ENEMY;
+        b->isTorpedo = 0;
         b->color   = color;
         b->trailColor = ColorAlpha(color, 0.5f);
         b->active  = 1;
@@ -119,4 +155,3 @@ void Projectiles_KillPlayer(ProjectilePool *pool, int index) {
 void Projectiles_KillEnemy(ProjectilePool *pool, int index) {
     pool->enemy[index].active = 0;
 }
-

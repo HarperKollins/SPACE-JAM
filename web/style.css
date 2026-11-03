@@ -1,0 +1,103 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #04060d;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  color: #e0f0ff;
+}
+
+#app-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #091224 0%, #03050a 100%);
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: calc(100vh * 16 / 9);
+  max-height: calc(100vw * 9 / 16);
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  box-shadow: 0 0 50px rgba(0, 180, 255, 0.2), 0 0 100px rgba(0, 0, 0, 0.8);
+  image-rendering: auto;
+  outline: none;
+}
+
+#top-nav {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+
+.hud-btn {
+  background: rgba(10, 20, 36, 0.75);
+  border: 1px solid rgba(0, 220, 255, 0.4);
+  color: #00e5ff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(6px);
+}
+
+.hud-btn:hover {
+  background: rgba(0, 220, 255, 0.25);
+  border-color: #00e5ff;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.5);
+  color: #fff;
+}
+
+/* Touch controls overlay for mobile/tablets */
+#touch-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  display: none;
+  justify-content: space-between;
+  padding: 0 30px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+@media (pointer: coarse) {
+  #touch-controls {
+    display: flex;
+  }
+}
+
+.touch-btn {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(8, 16, 32, 0.7);
+  border: 2px solid rgba(0, 220, 255, 0.5);
+  color: #00e5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  pointer-events: auto;
+  touch-action: none;
+}
+
